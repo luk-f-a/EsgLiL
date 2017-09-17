@@ -13,6 +13,13 @@ NN-LiL has been tested with Python 3.6 and all the versions described in the req
 
 # Quick tutorial
 
+# Structure [work in progress]
+EsgLiL will provide a pipeline approach to creating monte carlo simulations. The starting point is the basic random number simulator. The second step, if needed, is a transformation to a target distribution. Then, a correlation structure across dimensions. The next step is the application of a 
+stochastic model as defined by its stochastic differential equations. Then, an asset price layer which feeds from the stochastic processes in the previous step.
+
+These layers can be assembled as needed in a model pipeline, sklearn style. Some popular combinations will be provided in a small model zoo module.
+
+Ideally, there will be a final module capable of distributing these models using Dask. This is the final ambition but it is unlikely that it will be achieved in the short-term.
 
 # Want to contribute?
 
