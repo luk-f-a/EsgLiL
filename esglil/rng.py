@@ -93,11 +93,19 @@ class NormalRng(Rng):
         If a dict, it should contain the desired name of dimensions as keys
         and the size of the dimensions (per request to __next__ or generate)
         as values.
+        
+    mean : 1-D array_like, of length N
+        Mean of the N-dimensional distribution.
+        
+    cov : 2-D array_like, of shape (N, N)
+        Covariance matrix of the distribution. 
+        It must be symmetric and positive-semidefinite for proper sampling.
 
     loop_dim : string or None
         Ignored is shape is a tuple. If a loop_dim is provided,
         the instance will keep track of that dimension and increase the
         coordinates in each succesive call.
+        
     """
     __slots__ = ('mean', 'cov')
                  
