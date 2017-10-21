@@ -18,7 +18,7 @@ Example using Anaconda under Linux (make sure to run this commend from the top E
     
 Example not using Anaconda:
 
-    After creating an environment with Pyhon 3.6 (look at virtualenv documentation for this step), run ```pip install -r requirements.txt``` to quickly install all those dependencies.
+After creating an environment with Pyhon 3.6 (look at virtualenv documentation for this step), run ```pip install -r requirements.txt``` to quickly install all those dependencies.
 
 
 # Quick tutorial
