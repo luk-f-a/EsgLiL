@@ -84,7 +84,7 @@ class UniformRng(Rng):
 
 
 class NormalRng(Rng):
-    """class for uniform random number generation
+    """class for normal random number generation
 
      Parameters
     ----------
