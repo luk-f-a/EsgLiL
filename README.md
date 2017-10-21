@@ -13,9 +13,9 @@ EsgLiL has been tested with Python 3.6 and all the versions described in the req
 
 Example using Anaconda under Linux (wake sure to run this commend from the top EsgLiL folder, where environment.yml is):
 
-    ```
+    `
     conda env create -f environment.yml
-    ```
+    `
 
 
 # Quick tutorial
