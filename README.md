@@ -8,14 +8,17 @@ Monte Carlo scenario generators are mostly propietary. Those open-source, like Q
 
 # Installation
 
-You can download EsgLiL stand-alone from gitlab or as part of its parent project, PyLiL. We recommend that you create a virtual environment (with conda or virtualenv) and install all the packages in the requirements.txt. 
-EsgLiL has been tested with Python 3.6 and all the versions described in the requirements.txt file. After creating an environment with Pyhon 3.6, run ```pip install -r requirements.txt``` to quickly install all those dependencies.
+You can download EsgLiL stand-alone from gitlab or as part of its parent project, PyLiL. We recommend that you create a virtual environment (with conda or virtualenv). 
+EsgLiL has been tested with Python 3.6 and all the versions described in the requirements.txt and environment.yml files. 
 
-Example using Anaconda under Linux (wake sure to run this commend from the top EsgLiL folder, where environment.yml is):
+Example using Anaconda under Linux (make sure to run this commend from the top EsgLiL folder, where environment.yml is):
 
     
     conda env create -f environment.yml
     
+Example not using Anaconda:
+
+    After creating an environment with Pyhon 3.6 (look at virtualenv documentation for this step), run ```pip install -r requirements.txt``` to quickly install all those dependencies.
 
 
 # Quick tutorial
