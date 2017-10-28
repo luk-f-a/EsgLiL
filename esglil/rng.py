@@ -13,18 +13,22 @@ class Rng(object):
     """Base class for random number generators
     """
     __slots__ = ('shape', '_use_xr', '_to_xr', '_loop_dim',
-                 '_dims', '_coords')
+                 '_dims', '_coords', 'type')
 
-    def __init__(self, shape, loop_dim=None):
+    def __init__(self, shape, svar_names=None, loop_dim=None):
         if isinstance(shape, tuple):
             self.shape = shape
             self._use_xr = False
         elif isinstance(shape, dict):
             self._use_xr = True
-            self.shape = tuple(shape.values())
-            self._dims = ['sim', 'svar', 'time']
-            self._coords = {'sim': range(1, shape['sim']+1),
-                            'svar': range(1, shape['svar']+1),
+            self.shape = [shape['svar'], shape['sim'], shape['time']]
+            self._dims = ['svar','sim', 'time']
+            if svar_names is None:
+                svars = ['rv_{}'.format(i) for i in range(1, shape['svar']+1)]
+            else:
+                svars = svar_names
+            self._coords = {'svar': svars,
+                            'sim': range(1, shape['sim']+1),
                             'time': range(1, shape['time']+1)}
             #self._to_xr = lambda data, me: xr.DataArray(data,
             #                          dims=me._dims,
@@ -51,6 +55,13 @@ class Rng(object):
         random number generator
         """
         raise NotImplementedError
+        
+    @property
+    def svars(self):
+        if self._use_xr:
+            return self._coords['svar']
+        else:
+            return [None]
 
 
 class UniformRng(Rng):
@@ -63,6 +74,10 @@ class UniformRng(Rng):
         If a dict, it should contain the desired name of dimensions as keys
         and the size of the dimensions (per request to __next__ or generate)
         as values.
+        
+    svar_names: list, optional
+        Names of each output stochastic variable. If not given, will be 
+        called "rv_[number]", with number ranging from 1 to max(svar)   
 
     loop_dim : string or None
         Ignored is shape is a tuple. If a loop_dim is provided,
@@ -71,6 +86,8 @@ class UniformRng(Rng):
     """
     def generate(self):
         """Return the next iteration of the random number generator
+       
+
         """
         np_rnd = np.random.rand(*self.shape)
         if self._use_xr:
@@ -100,6 +117,10 @@ class NormalRng(Rng):
     cov : 2-D array_like, of shape (N, N)
         Covariance matrix of the distribution. 
         It must be symmetric and positive-semidefinite for proper sampling.
+    
+    svar_names: list, optional
+        Names of each output stochastic variable. If not given, will be 
+        called "rv_[number]", with number ranging from 1 to max(svar)
 
     loop_dim : string or None
         Ignored is shape is a tuple. If a loop_dim is provided,
@@ -109,7 +130,7 @@ class NormalRng(Rng):
     """
     __slots__ = ('mean', 'cov')
                  
-    def __init__(self, shape, mean, cov, loop_dim=None):
+    def __init__(self, shape, mean, cov, svar_names=None, loop_dim=None):
         Rng.__init__(self, shape, loop_dim)
         self.mean = mean
         self.cov = cov
