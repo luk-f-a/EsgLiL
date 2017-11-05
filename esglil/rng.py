@@ -16,6 +16,9 @@ class Rng(object):
                  '_dims', '_coords', 'type')
 
     def __init__(self, shape, svar_names=None, loop_dim=None):
+        assert loop_dim is None or type(loop_dim) is str
+        if type(loop_dim) is str:
+            assert loop_dim in ('svar', 'sim', 'time')
         if isinstance(shape, tuple):
             self.shape = shape
             self._use_xr = False
@@ -38,12 +41,14 @@ class Rng(object):
                 self._coords[loop_dim] = list(self._coords[loop_dim])
             else:
                 self._loop_dim = None
+            
+ 
                 
     def __iter__(self):
         return self
 
     def __next__(self):
-        return self.generate()
+            return self.generate()
 
     def _fwd_coords(self):
         self._coords[self._loop_dim] = [x+len(self._coords[self._loop_dim])
@@ -131,20 +136,36 @@ class NormalRng(Rng):
     __slots__ = ('mean', 'cov')
                  
     def __init__(self, shape, mean, cov, svar_names=None, loop_dim=None):
-        Rng.__init__(self, shape, loop_dim)
+        Rng.__init__(self, shape=shape, svar_names=svar_names,
+                     loop_dim=loop_dim)
         self.mean = mean
         self.cov = cov
+        
+    def _check_valid_params(self):
+        #TODO: if output is numpy, mean must be size 1 and cov 1x1
+        # if output is xr size of mean and cov must agree with svar dim
+        pass
+    
+    def _reshape_array(self, a):
+        #TODO: the shape of array a needs to be aligned to the dims
+        return a
         
     def generate(self):
         """Return the next iteration of the random number generator
         """
-        np_rnd = np.random.multivariate_normal(self.mean, self.cov, self.shape,
-                                               check_valid='raise')
+        self._check_valid_params()
+        
         if self._use_xr:
-            #out = self._to_xr(np_rnd, self)
+            np_rnd = np.random.multivariate_normal(self.mean, self.cov, 
+                                               self.shape[1:],
+                                               check_valid='raise')
+            np_rnd = np.transpose(np_rnd, axes=(2,0,1))
             out = xr.DataArray(np_rnd, dims=self._dims, coords=self._coords)
             if self._loop_dim is not None:
                 self._fwd_coords()
         else:
-            out = np_rnd
+            np_rnd = np.random.multivariate_normal(self.mean, self.cov, 
+                                               self.shape,
+                                               check_valid='raise')
+            out = np_rnd.squeeze()
         return out
