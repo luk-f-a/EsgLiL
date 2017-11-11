@@ -47,16 +47,16 @@ class Uniform_Rng_test_xr_noloop(unittest.TestCase):
     def test_returns_object(self):
         r_nb = self.rng.generate()
         self.assertEqual(type(r_nb), xr.DataArray, 'incorrect type')
-        self.assertEqual(r_nb.shape, (10,5,1), 'incorrect shape')
-        self.assertEqual(r_nb.dims, ('sim', 'svar', 'time'), 'incorrect dims')
+        self.assertEqual(r_nb.shape, (5,10,1), 'incorrect shape')
+        self.assertEqual(r_nb.dims, ('svar', 'sim', 'time'), 'incorrect dims')
         self.assertEqual(r_nb.coords['time'], 1, 'incorrect type coord')
 
     def test_loop(self):
         for i, r_nb in enumerate(self.rng):
             if i == 5:
                 break
-            self.assertEqual(r_nb.shape, (10,5,1), 'incorrect shape')
-        self.assertEqual(r_nb.dims, ('sim', 'svar', 'time'), 'incorrect dims')
+            self.assertEqual(r_nb.shape, (5,10,1), 'incorrect shape')
+        self.assertEqual(r_nb.dims, ('svar', 'sim', 'time'), 'incorrect dims')
         self.assertEqual(r_nb.coords['time'], 1, 'incorrect type coord')
 
 class Uniform_Rng_test_xr_withloop(unittest.TestCase):
@@ -70,16 +70,16 @@ class Uniform_Rng_test_xr_withloop(unittest.TestCase):
     def test_returns_object(self):
         r_nb = self.rng.generate()
         self.assertEqual(type(r_nb), xr.DataArray, 'incorrect type')
-        self.assertEqual(r_nb.shape, (10,5,1), 'incorrect shape')
-        self.assertEqual(r_nb.dims, ('sim', 'svar', 'time'), 'incorrect dims')
+        self.assertEqual(r_nb.shape, (5,10,1), 'incorrect shape')
+        self.assertEqual(r_nb.dims, ('svar', 'sim', 'time'), 'incorrect dims')
         self.assertEqual(r_nb.coords['time'], 1, 'incorrect type coord')
 
     def test_loop(self):
         for i, r_nb in enumerate(self.rng):
             if i == 5:
                 break
-            self.assertEqual(r_nb.shape, (10,5,1), 'incorrect shape')
-        self.assertEqual(r_nb.dims, ('sim', 'svar', 'time'), 'incorrect dims')
+            self.assertEqual(r_nb.shape, (5,10,1), 'incorrect shape')
+        self.assertEqual(r_nb.dims, ('svar', 'sim', 'time'), 'incorrect dims')
         self.assertEqual(r_nb.coords['time'], i+1, 'incorrect type coord')   
 
 
@@ -94,8 +94,8 @@ class Uniform_Rng_test_xr_withloop2(unittest.TestCase):
     def test_returns_object(self):
         r_nb = self.rng.generate()
         self.assertEqual(type(r_nb), xr.DataArray, 'incorrect type')
-        self.assertEqual(r_nb.shape, (10,5,2), 'incorrect shape')
-        self.assertEqual(r_nb.dims, ('sim', 'svar', 'time'), 'incorrect dims')
+        self.assertEqual(r_nb.shape, (5,10,2), 'incorrect shape')
+        self.assertEqual(r_nb.dims, ('svar', 'sim', 'time'), 'incorrect dims')
         self.assertEqual(r_nb.coords['time'].values.tolist(), [1 ,2],
                          'incorrect type coord')
 
@@ -103,8 +103,8 @@ class Uniform_Rng_test_xr_withloop2(unittest.TestCase):
         for i, r_nb in enumerate(self.rng):
             if i == 5:
                 break
-            self.assertEqual(r_nb.shape, (10,5,2), 'incorrect shape')
-        self.assertEqual(r_nb.dims, ('sim', 'svar', 'time'), 'incorrect dims')
+            self.assertEqual(r_nb.shape, (5,10,2), 'incorrect shape')
+        self.assertEqual(r_nb.dims, ('svar', 'sim', 'time'), 'incorrect dims')
         self.assertEqual(r_nb.coords['time'].values.tolist(), [2*i+1, 2*i+2],
                          'incorrect type coord') 
          

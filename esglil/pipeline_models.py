@@ -19,6 +19,7 @@ class  GBM3(object):
                  delta_t=1, time_sampling_ratio=1,record_bm=False):
         
         self.max_t =  max_t
+        self.record_bm = record_bm
         assert type(loop_time) is bool
         assert type(record_bm) is bool
 
