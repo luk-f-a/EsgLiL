@@ -14,7 +14,7 @@ import xarray as xr
 
 
 class  GBM3(object):
-    def __init__(self, sims=1, max_t=10, loop_time=True, mu=0, sigma=1, 
+    def __init__(self, sims=2, max_t=10, loop_time=False, mu=0, sigma=1, 
                  delta_t=1, record_bm=False):
         assert type(record_bm) is bool
         (self.sims, self.max_t, self.loop_time, self.mu, 
@@ -38,7 +38,7 @@ class  GBM3(object):
         self.ppl = pipeline.Pipeline(ppl_list)
         
     def time_loop_gen(self):
-        return (self.ppl.generate().squeeze() for i in range(self.max_t))
+        return (self.generate().squeeze() for i in range(self.max_t))
            
     def generate(self):
         return self.ppl.generate().squeeze()

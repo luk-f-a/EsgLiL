@@ -48,7 +48,7 @@ class Rng(object):
         return self
 
     def __next__(self):
-            return self.generate()
+        return self.generate()
 
     def _fwd_coords(self):
         self._coords[self._loop_dim] = [x+len(self._coords[self._loop_dim])

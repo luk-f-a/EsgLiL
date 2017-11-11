@@ -35,7 +35,46 @@ class Pipeline(object):
             X = step.transform(X)
         return X
 
+class ModelBranch(object):
+    """Splits models outputs by svar, channels them to different models and
+    merges the input
 
+    Parameters
+    ----------
+    source : Transform, generator or pipeline object
+        source of the data
+    split_map: dict of {(svars): model}. svars is a tuple with the svars names
+              of the source for each model, and model is a transform or pipeline 
+              
+    """
+
+    __slots__ = ('_source', '_split_map')
+    
+    def __init__(self, source, split_map):
+        self._source = source
+        self._split_map = split_map
+
+
+    @if_delegate_has_method(delegate='_source')
+    def generate(self):
+        out = []
+        for svars, model in self._split_map.items():
+            Y = model.generate()
+            out.append(Y)
+        out = xr.concat(out, dim='svar')
+        return out        
+        
+        
+    @if_delegate_has_method(delegate='_source')    
+    def transform(self, X):
+        out = []
+        for svars, model in self._split_map.items():
+            Y = model.transform(X.sel(svar=svars))
+            out.append(Y)
+        out = xr.concat(out, dim='svar')
+        return out
+    
+    
 class ModelUnion(object):
     """Merges the outputs of two or more models
     
@@ -45,8 +84,6 @@ class ModelUnion(object):
     input_list : list of (string, model) tuples
         List of model objects where the data is coming from. The first
         half of each tuple is the name of the model.
-
-        
         
     """
     __slots__ = ('type', '_first_model', 'model_list')
@@ -97,10 +134,10 @@ class ModelUnion(object):
         return data
 
     @if_delegate_has_method(delegate='_first_model')
-    def transform(self):
+    def transform(self, X):
         data = []
         for name, model in self.model_list:
-            data.append(model.transform())
+            data.append(model.transform(X))
         data = xr.concat(data, dim='svar')
         return data
         
