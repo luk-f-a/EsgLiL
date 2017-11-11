@@ -48,7 +48,7 @@ class Rng(object):
         return self
 
     def __next__(self):
-            return self.generate()
+        return self.generate()
 
     def _fwd_coords(self):
         self._coords[self._loop_dim] = [x+len(self._coords[self._loop_dim])
@@ -169,3 +169,39 @@ class NormalRng(Rng):
                                                check_valid='raise')
             out = np_rnd.squeeze()
         return out
+        
+
+class RngRecorder(object):
+    """Class for saving the basic random variables of the process
+    """
+    __slots__ = ('uncorrelate', 'cov', 'rand_numbers')
+    
+    def __init__(self, uncorrelate=False, cov=None):
+        assert type(uncorrelate) is bool
+        self.uncorrelate = uncorrelate
+        self.cov = cov
+        self.rand_numbers = None
+        
+    def _uncorrelate(self, X):
+        if self.cov.shape == (1,1):
+            return X
+        l = np.linalg.cholesky(self.cov)
+        unc = np.linalg.solve(l, X.T).T
+        return unc
+        
+    def transform(self, X):
+        if self.uncorrelate and self.cov is not None:
+            warnings.warn("RngRecorder: A covariance matrix was provided"
+                          " but uncorrelate was set to False")
+        if not self.uncorrelate:
+            if self.rand_numbers is None:
+                self.rand_numbers = X
+            else:
+                self.rand_numbers = xr.concat([self.rand_numbers, X], dim='time')
+        else:
+            if self.rand_numbers is None:
+                self.rand_numbers = self._uncorrelate(X)
+            else:
+                unc = self._uncorrelate(X)
+                self.rand_numbers = xr.merge([self.rand_numbers, unc], dim='time')
+        return X
