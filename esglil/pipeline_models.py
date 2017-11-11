@@ -11,24 +11,27 @@ from . import pipeline
 from . import equity_models
 import numpy as np
 import xarray as xr
-
+from fractions import Fraction
 
 class  GBM3(object):
 
     
-    def __init__(self, sims=1, max_t=10, loop_time=True, mu=0, sigma=1, delta_t=1):
+    def __init__(self, sims=1, max_t=10, loop_time=True, mu=0, sigma=1, 
+                 delta_t=1, time_sampling_ratio=1):
         
-        (self.sims, self.max_t, self.loop_time, 
-         self.mu, self.sigma, self.delta_t) = (sims, max_t, loop_time, 
-                                               mu, sigma, delta_t)
+        self.max_t =  max_t
+        assert type(loop_time) is bool
         if loop_time:
             loop_dim = 'time'
         else:
             loop_dim = None
-        dW = rng.NormalRng(shape={'svar':1, 'sim':sims, 'time':max_t},
-                           mean=[0], cov=[[delta_t]], loop_dim=loop_dim)
+        dW = rng.NormalRng(shape={'svar':1, 'sim':sims, 
+                                  'time':max_t*time_sampling_ratio},
+                           mean=[0], cov=[[delta_t/time_sampling_ratio]],
+                                 loop_dim=loop_dim)
         gbm = equity_models.GeometricBrownianMotion(mu=mu, sigma=sigma, 
-                                                    s_zero=100, delta_t=delta_t)
+                            s_zero=100, delta_t_out=delta_t, 
+                            delta_t_in=Fraction(delta_t, time_sampling_ratio))
     
         self.ppl = pipeline.Pipeline([dW, gbm])
         
