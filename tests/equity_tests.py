@@ -16,11 +16,12 @@ from esglil import equity_models
 import numpy as np
 import xarray as xr
 
+#TODO: test delta_t_in and out different than one and different than each other
 class equity_test_np(unittest.TestCase):
     def setUp(self):
         self.rng = rng.NormalRng(shape=(10,5),mean=[0], cov=[[1]])
-        self.gbm = equity_models.GeometricBrownianMotion(mu=0, sigma=0.2, 
-                                                         s_zero=100, delta_t=1)
+        GBM = equity_models.GeometricBrownianMotion
+        self.gbm = GBM(mu=0, sigma=0.2, s_zero=100, delta_t_in=1, delta_t_out=1)
         
     def test_shape(self):
         X = self.rng.generate()
@@ -33,8 +34,8 @@ class equity_test_xr(unittest.TestCase):
     def setUp(self):
         self.rng = rng.NormalRng(shape={'svar':2, 'sim':10, 'time':5},
                                 mean=[0,0], cov=[[1,0],[0,1]])
-        self.gbm = equity_models.GeometricBrownianMotion(mu=0, sigma=0.2, 
-                                                         s_zero=100, delta_t=1)
+        GBM = equity_models.GeometricBrownianMotion
+        self.gbm = GBM(mu=0, sigma=0.2, s_zero=100, delta_t_in=1, delta_t_out=1)
         
     def test_shape(self):
         X = self.rng.generate()
@@ -49,9 +50,8 @@ class pipeline_gbm_test_np(unittest.TestCase):
     """
     def setUp(self):
         self.rng = rng.NormalRng(shape=(10,5),mean=[0], cov=[[1]])
-        self.gbm = equity_models.GeometricBrownianMotion(mu=0, sigma=0.2, 
-                                                         s_zero=100, delta_t=1)
-
+        GBM = equity_models.GeometricBrownianMotion
+        self.gbm = GBM(mu=0, sigma=0.2, s_zero=100, delta_t_in=1, delta_t_out=1)
         self.ppl = pipeline.Pipeline([self.rng, self.gbm])
         
     def test_returns_object(self):
@@ -68,8 +68,8 @@ class pipeline_gbm_test_xr(unittest.TestCase):
     def setUp(self):
         self.rng = rng.NormalRng(shape={'svar':2, 'sim':10, 'time':5},
                                 mean=[0,0], cov=[[1,0],[0,1]])
-        self.gbm = equity_models.GeometricBrownianMotion(mu=0, sigma=0.2, 
-                                                         s_zero=100, delta_t=1)
+        GBM = equity_models.GeometricBrownianMotion
+        self.gbm = GBM(mu=0, sigma=0.2, s_zero=100, delta_t_in=1, delta_t_out=1)
 
         self.ppl = pipeline.Pipeline([self.rng, self.gbm])
         
