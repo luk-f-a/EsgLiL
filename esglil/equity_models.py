@@ -27,8 +27,8 @@ class GeometricBrownianMotion(object):
     """
     __slots__ = ('mu', 'sigma', 'delta_t_in', 'delta_t_out', 'S', '_use_xr')
     
-    def __init__(self, mu=None, sigma=None, s_zero=1, 
-                 delta_t_out=1, delta_t_in=1):
+    def __init__(self, mu=None, sigma=None, s_zero=1, delta_t_out=1, 
+                 delta_t_in=1):
         #TODO : handle non-scalar mu, sigma and s_zero
         self.mu = mu
         self.sigma = sigma
@@ -78,7 +78,7 @@ class GeometricBrownianMotion(object):
             S = X.copy()
             S_t = self.S
             for t in S.time:
-                S_t = self.mu*S_t*self.delta_t_in+self.sigma*S_t*X.loc[{'time':t}]
+                S_t += self.mu*S_t*self.delta_t_in+self.sigma*S_t*X.loc[{'time':t}]
                 S.loc[{'time':t}] = S_t
             self.S = S_t
             S_out = S.loc[{'time':slice(dt_ratio,None,dt_ratio)}]
