@@ -1,40 +1,44 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Tue Oct 24 20:28:07 2017
+Created on Tue Nov  7 22:53:54 2017
 
 @author: luk-f-a
 """
-import numpy as np
 import xarray as xr
 
-class GeometricBrownianMotion(object):
-    """class for Geometric Brownian Motion model of equity returns
-
+class HullWhite1FModel(object):
+    """class for (1 Factor) Hull White model of short interest rate
+    SDE: dr(t)=[b(t)-a*r(t)]dt+sigma(t)dW(t)
+    
      Parameters
     ----------
-    mu : scalar
-        drift
+    b(t) : DataArray
+        mean reversion level
         
+    a: scalar
+        mean reversion speed
+    
     sigma : scalar
-        standard deviation of gbm
+        standard deviation
         
-    s_zero : scalar
-        initial value of gbm. Defaults to 1.
+    r_zero : scalar
+        initial value of short rate.
         
     delta_t : scalar
         
     """
-    __slots__ = ('mu', 'sigma', 'delta_t_in', 'delta_t_out', 'S', '_use_xr')
     
-    def __init__(self, mu=None, sigma=None, s_zero=1, delta_t_out=1, 
+    __slots__ = ('b', 'a', 'sigma', 'delta_t_in', 'delta_t_out', 'r', '_use_xr')
+    
+    def __init__(self, b=None, a=None, sigma=None, r_zero=1, delta_t_out=1, 
                  delta_t_in=1):
-        #TODO : handle non-scalar mu, sigma and s_zero
-        self.mu = mu
+        self.b = b
+        self.a = a
         self.sigma = sigma
         self.delta_t_in = delta_t_in
         self.delta_t_out = delta_t_out
-        self.S = s_zero
+        self.r = r_zero
         self._use_xr = None
         
     def _check_valid_params(self):
@@ -57,7 +61,7 @@ class GeometricBrownianMotion(object):
         
     def transform(self, X):
         """
-        Produces simulations of Geometric Brownian Motion
+        Produces simulations of 1 factor Hull White model short rate
         
         Parameters
         ----------       
@@ -70,23 +74,29 @@ class GeometricBrownianMotion(object):
                                         ΔS(t)=μS(t-1)dt+σS(t-1)X
         
         """
-        assert not (self.mu is None or self.sigma is None)
+        assert not (self.a is None or self.b is None or self.sigma is None)
+        a = self.a
+        if type(self.b) is xr.DataArray:
+            b = lambda t: self.b.loc[{'time':t}]
+        elif callable(self.b):
+            b = self.b
+        else:
+            raise TypeError
+            
+        sigma = self.sigma 
         self._check_valid_params()
         self._check_valid_X(X)
         dt_ratio = int(self.delta_t_out/self.delta_t_in)
         if self._use_xr:
-            S = X.copy()
-            S_t = self.S
-            for t in S.time:
-                S_t += self.mu*S_t*self.delta_t_in+self.sigma*S_t*X.loc[{'time':t}]
-                S.loc[{'time':t}] = S_t
-            self.S = S_t
-            S_out = S.loc[{'time':slice(dt_ratio,None,dt_ratio)}]
+            r = X.copy()
+            r_t = self.r
+            for t in r.time:
+                b_t = b(t)
+                r_t += (b_t-a*r_t)*self.delta_t_in+sigma*X.loc[{'time':t}]
+                r.loc[{'time':t}] = r_t
+            self.r = r_t
+            r_out = r.loc[{'time':slice(dt_ratio,None,dt_ratio)}]
         else:
-            self.S = self.mu*self.S*self.delta_t_in+self.sigma*self.S*X
-            S_out = self.S
-        return S_out
-        
-        
-        
-    
+            self.r += (b_t-a*r_t)*self.delta_t_in+sigma*X.loc[{'time':t}]
+            r_out = self.r
+        return r_out
