@@ -24,13 +24,13 @@ class  GBM3(object):
         assert type(record_bm) is bool
 
         if loop_time:
-            loop_dim = 'time'
+            loop_dim = 'timestep'
         else:
             loop_dim = None
         ppl_list = []
         dW = rng.NormalRng(shape={'svar':1, 'sim':sims, 
-                                  'time':max_t*time_sampling_ratio},
-                           mean=[0], cov=[[delta_t/time_sampling_ratio]],
+                                  'timestep':max_t*time_sampling_ratio},
+                           mean=[0], cov=[[1/time_sampling_ratio]],
                                  loop_dim=loop_dim)       
         ppl_list.append(dW)
         if record_bm:
@@ -38,7 +38,7 @@ class  GBM3(object):
             ppl_list.append(rec)
         gbm = equity_models.GeometricBrownianMotion(mu=mu, sigma=sigma, 
                             s_zero=100, delta_t_out=delta_t, 
-                            delta_t_in=Fraction(delta_t, time_sampling_ratio))
+                            delta_t_in=1/time_sampling_ratio)
         ppl_list.append(gbm)
         self.ppl = pipeline.Pipeline(ppl_list)
 
@@ -75,10 +75,10 @@ class  GBM2(object):
          self.mu, self.sigma, self.delta_t) = (sims, max_t, loop_time, 
                                                mu, sigma, delta_t)
         if loop_time:
-            loop_dim = 'time'
+            loop_dim = 'timestep'
         else:
             loop_dim = None
-        dW = rng.NormalRng(shape={'svar':1, 'sim':sims, 'time':max_t},
+        dW = rng.NormalRng(shape={'svar':1, 'sim':sims, 'timestep':max_t},
                            mean=[0], cov=[[delta_t]], loop_dim=loop_dim)
         gbm = equity_models.GeometricBrownianMotion(mu=mu, sigma=sigma, 
                                                     s_zero=100, delta_t=delta_t)
@@ -97,10 +97,10 @@ class  GBM2(object):
     
 def GBM(sims=1, max_t=10, loop_time=True, mu=0, sigma=1, delta_t=1):
     if loop_time:
-        loop_dim = 'time'
+        loop_dim = 'timestep'
     else:
         loop_dim = None
-    dW = rng.NormalRng(shape={'svar':1, 'sim':sims, 'time':max_t},
+    dW = rng.NormalRng(shape={'svar':1, 'sim':sims, 'timestep':max_t},
                        mean=[0], cov=[[delta_t]], loop_dim=loop_dim)
     gbm = equity_models.GeometricBrownianMotion(mu=mu, sigma=sigma, 
                                                 s_zero=100, delta_t=delta_t)

@@ -32,7 +32,7 @@ class equity_test_np(unittest.TestCase):
         
 class equity_test_xr(unittest.TestCase):
     def setUp(self):
-        self.rng = rng.NormalRng(shape={'svar':2, 'sim':10, 'time':5},
+        self.rng = rng.NormalRng(shape={'svar':2, 'sim':10, 'timestep':5},
                                 mean=[0,0], cov=[[1,0],[0,1]])
         GBM = equity_models.GeometricBrownianMotion
         self.gbm = GBM(mu=0, sigma=0.2, s_zero=100, delta_t_in=1, delta_t_out=1)
@@ -66,7 +66,7 @@ class pipeline_gbm_test_xr(unittest.TestCase):
     """Test pipeline uniform rng with numpy output
     """
     def setUp(self):
-        self.rng = rng.NormalRng(shape={'svar':2, 'sim':10, 'time':5},
+        self.rng = rng.NormalRng(shape={'svar':2, 'sim':10, 'timestep':5},
                                 mean=[0,0], cov=[[1,0],[0,1]])
         GBM = equity_models.GeometricBrownianMotion
         self.gbm = GBM(mu=0, sigma=0.2, s_zero=100, delta_t_in=1, delta_t_out=1)

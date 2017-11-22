@@ -44,8 +44,8 @@ class model_union_uniform_rng_test_np(unittest.TestCase):
     """Test pipeline uniform rng with numpy output
     """
     def setUp(self):
-        self.rng1 = rng.UniformRng({'svar':1, 'sim':10, 'time':5})
-        self.rng2 = rng.UniformRng({'svar':1, 'sim':10, 'time':5})
+        self.rng1 = rng.UniformRng({'svar':1, 'sim':10, 'timestep':5})
+        self.rng2 = rng.UniformRng({'svar':1, 'sim':10, 'timestep':5})
         self.mu = pipeline.ModelUnion([('a', self.rng1), ('b', self.rng2)])
         
     def test_returns_object(self):
@@ -67,7 +67,7 @@ class model_branch_normal_rng_test_np(unittest.TestCase):
     """Test pipeline uniform rng with numpy output
     """
     def setUp(self):
-        self.rng = rng.NormalRng({'svar':2, 'sim':10, 'time':5}, 
+        self.rng = rng.NormalRng({'svar':2, 'sim':10, 'timestep':5}, 
                                  mean=[0,0], cov=[[1,0],[0,1]])
 #        gbm1 = equity_models.GeometricBrownianMotion(mu=0, sigma=1)
 #        gbm2 = equity_models.GeometricBrownianMotion(mu=2, sigma=10)

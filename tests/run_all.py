@@ -8,9 +8,7 @@ Created on Wed Nov 15 19:51:00 2017
 import unittest
 import sys, os
 
-#==============================================================================
-# THIS WILL RUN ALL TEST EXCEPT INTEGRATIONS TESTS, WHICH SHOULD BE RUN MANUALLY
-#==============================================================================
+
 if __name__ == '__main__':
     sys.path.append(os.path.dirname(os.getcwd()))
     from esglil import rng

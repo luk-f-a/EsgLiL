@@ -61,7 +61,7 @@ def plot_short_rate_pcentiles():
     mean = np.median(sims.squeeze(), axis=0)
     plt.plot(x, mean, 'k')
     n = len(pctiles)
-    color = plt.cm.Blues(np.linspace(0.1,0.9,n))
+    color = plt.cm.Blues(np.linspace(0.4,0.6,n))
 
     pct_pairs = list(zip(pctiles[:-1], pctiles[1:]))
     for i in range(n//2):
@@ -73,7 +73,7 @@ def plot_short_rate_pcentiles():
 
 def plot_short_rate_dist():
     now_ = datetime.datetime.now()
-    sims_nb=1_000
+    sims_nb=10_000
     time_sampling_factor = 20
     max_time = 1
     r_gen = rng.NormalRng(shape={'svar':1, 'sim':sims_nb, 'timestep':max_time*time_sampling_factor},
@@ -105,9 +105,10 @@ def plot_short_rate_dist():
 #    z = (sims_test.values.squeeze()-theoretical_mu)/theoretical_sigma
 #    _, p3= kstest(z, 'norm',args=(0,1))
     
-    print(p1)
+    print('p-value normal test (>0.05 is good)', p1)
     probplot(sims_test.values.squeeze(),
              sparams=(theoretical_mu,theoretical_sigma),fit=False, plot=plt)
+    plt.show()
     
 plot_short_rate_pcentiles()
 plot_short_rate_dist()
