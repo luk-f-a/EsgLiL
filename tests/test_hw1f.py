@@ -44,9 +44,9 @@ from scipy.stats import normaltest, kstest
 
 class hw1f_leakage_tests(unittest.TestCase):    
     def setUp(self):
-        self.time_sampling_factor = k = 100
-        self.max_time = T = 10
-        self.rng = rng.NormalRng(shape={'svar':1, 'sim':1000, 
+        self.time_sampling_factor = k = 250
+        self.max_time = T = 20
+        self.rng = rng.NormalRng(shape={'svar':1, 'sim':5000, 
                                         'timestep':T*k},
                                 mean=[0], cov=[[1/k]])
         self.X = self.rng.generate()
@@ -107,7 +107,22 @@ class hw1f_leakage_tests(unittest.TestCase):
         """Test that starting bond prices can be recovered
         """
         import pandas as pd
-        self.sims.to_dataframe(name='test').unstack(['svar', 'timestep']).to_clipboard()
+        self.sims.coords['timestep'] = self.sims.coords['timestep']/self.time_sampling_factor
+        df_sims = self.sims.to_dataframe(name='value').reset_index()
+        df_bonds = df_sims[df_sims.svar.str.startswith('bond')]
+        df_cash = df_sims[df_sims.svar.str.startswith('cash_index')].set_index(['svar', 'sim', 'timestep'])
+        mat = df_bonds['svar'].str.split('_').str.get(1).astype('float').astype('int')
+        ts = df_bonds['timestep'].astype('int')
+        df_bonds['time2mat'] = (mat - ts)
+        df_bonds['svar'] = 'rate_'+df_bonds['time2mat'].astype('str').str.zfill(2)
+        
+        df_bonds['rate'] = df_bonds['value']**(-1/df_bonds['time2mat'])-1
+        df_bonds = df_bonds[['svar', 'sim', 'timestep', 'rate']].set_index(['svar', 'sim', 'timestep'])
+        df_out = pd.concat([df_cash, df_bonds], axis=1)   
+        #ESG Format - columns are time to maturity
+        df_out.unstack(['svar']).dropna(axis=1, how='all').to_clipboard()
+        #Simulation natural Format - columns are bond maturity
+        #self.sims.to_dataframe(name='test').unstack(['svar']).to_clipboard()
         
         
         
