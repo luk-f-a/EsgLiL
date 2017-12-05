@@ -225,9 +225,79 @@ def hw1f_B_function(bond_prices, a, sigma):
     f = lambda t: b_spline(t)+t*b_spline.derivative()(t)
     B = lambda t: f(t)+ sigma**2/(2*a**2)*(1-np.exp(-a*t))**2
     return B, f(0)
+
+class HullWhite1fShortRate(object):
+    """class for (1 Factor) Hull White model of short interest rate
+    This class only implements the short rate
+    SDE: dr(t)= b(t)+dy(t)
+         where y(t)=-a*r(t)+sigma*dW(t)
+         
+
+    The integral of b(t) between 0 and T is denoted as B(t) and can be used
+    instead of b(t). B is deterministic and y(t) is stochastic. In practice,
+    the simulations are based on r(t)= B(t)+y(t)
+    All other parameters retain their meaning from the standard
+    model parametrization dr(t)=[b(t)-a*r(t)]dt+sigma*dW(t)
+    All parameters must be scaled to the unit of time used for the timestep.
+    For example, if the steps are daily (1/252 of a year) then daily a, B and 
+    sigma must be provided. This is because the class does not take a delta_t
+    parameter, and therefore it must be embedded in the parameters such that
+    dr(t)=[b(t)-a*r(t)]dt+sigma*dW(t) => dr(t)=[b(t)-a*r(t)]+sigma*dW(t)
     
+     Parameters
+    ----------
+        
+    B(t) : callable (with t as only argument)
+        integral from 0 to t of b(t). 
+        
+    a: scalar
+        mean reversion speed
+    
+    sigma : scalar
+        standard deviation
+        
+    """    
+    __slots__ = ('B', 'a', 'sigma', '_yt', 'r')
+    
+    def __init__(self, B=None, a=None, sigma=None, dW=None):
+    
+        self.B = B
+        self.a = a
+        self.sigma = sigma
+        self.y_t = 0
+        self.dW = dW
+
+    def _check_valid_params(self):
+        assert  (self.a is not None and
+        self.B is not None and self.sigma is not None)
+
+    def _to_callable(self, param):
+        if not callable(param):
+            if type(param) is float:
+                param = lambda t: param
+            else:
+                raise TypeError
+        return param
+    
+    def _process_params(self):
+        if self.B is not None:
+            self.B = self._to_callable(self.B)
+        if self.a is not None:
+            self.a = self._to_callable(self.a)
+        if self.sigma is not None:
+            self.sigma = self._to_callable(self.sigma)
+
+    def run_step(self):
+        self._yt += -self.a()*self._yt+self.sigma()*self.dW()
+        self.r = self.B() + self._yt
+        
+    def __call__(self):
+        return self.r
+
+        
 class HullWhite1fModel(object):
     """class for (1 Factor) Hull White model of short interest rate
+    This class can output short rate, cash index and bond prices
     SDE: dr(t)=[b(t)-a*r(t)]dt+sigma*dW(t)
     The integral of b(t) between 0 and T is denoted as B(t) and can be used
     instead of b(t) since r(t) = B(t)+y(t), where B is deterministic and 
@@ -259,7 +329,7 @@ class HullWhite1fModel(object):
         
     """
     
-    __slots__ = ('b', 'B', 'a', 'sigma', 'p_t', 'delta_t_in', 'delta_t_out', 'r',
+    __slots__ = ('b', 'B', 'a', 'sigma', 'p_t', 'y_t', 'cash_t', 'delta_t_in', 'delta_t_out', 'r',
                  '_use_xr')
     
     def __init__(self, b=None, B=None, a=None, sigma=None, r_zero=1, 
@@ -274,6 +344,8 @@ class HullWhite1fModel(object):
         self.r = r_zero
         self._use_xr = None
         self.p_t = bond_prices
+        self.y_t = 0
+        self.cash_t = 0
         
     def _check_valid_params(self):
         assert  (self.a is not None and
@@ -359,8 +431,8 @@ class HullWhite1fModel(object):
             if b is not None:    
                 r_t = self.r
             else:
-                y_t = 0
-            cash = 0
+                y_t = self.y_t
+            cash = self.cash_t
             p_t = self.p_t
             
             for ts in r.timestep:
@@ -386,6 +458,8 @@ class HullWhite1fModel(object):
                     p.loc[{'timestep':ts}] = p_t.squeeze()
             self.r = r_t
             self.p_t = p_t
+            self.y_t = y_t
+            self.cash_t = cash
             r_out = r[{'timestep':slice(dt_ratio-1, None, dt_ratio)}]
             cash_out = cash_ix[{'timestep':slice(dt_ratio-1, None, dt_ratio)}]
             if self.p_t is not None: 
