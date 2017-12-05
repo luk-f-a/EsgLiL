@@ -44,12 +44,12 @@ from scipy.stats import normaltest, kstest
 
 class hw1f_leakage_tests(unittest.TestCase):    
     def setUp(self):
-        self.time_sampling_factor = k = 250
-        self.max_time = T = 20
-        self.rng = rng.NormalRng(shape={'svar':1, 'sim':5000, 
-                                        'timestep':T*k},
-                                mean=[0], cov=[[1/k]])
-        self.X = self.rng.generate()
+        self.time_sampling_factor = k = 252
+        self.max_time = T = 40
+        self.rng = rng.NormalRng(shape={'svar':1, 'sim':1000, 
+                                        'timestep':k},
+                                mean=[0], cov=[[1/k]], loop_dim='timestep')
+        #self.X = self.rng.generate()
         
         bond_prices = {1: 1.0073, 2: 1.0111, 3: 1.0136, 4: 1.0138, 5: 1.0115, 6: 1.0072,
               7: 1.0013, 8: 0.9941, 9: 0.9852, 10: 0.9751, 11: 0.9669, 12: 0.9562,
@@ -98,25 +98,33 @@ class hw1f_leakage_tests(unittest.TestCase):
 
         
 
-        hw = HW(a=a, B=B, sigma=sigma, r_zero=r_0, 
+        self.hw = HW(a=a, B=B, sigma=sigma, r_zero=r_0, 
                       delta_t_in=1/self.time_sampling_factor, delta_t_out=1,
                       bond_prices=bond_prices)
-        self.sims = hw.transform(self.X)    
-        
+            
+
+
+                
     def test_bond_prices(self):
         """Test that starting bond prices can be recovered
         """
         import pandas as pd
+        sims = []
+        for year in range(1, 41):
+            X = self.rng.generate()
+            sims.append(self.hw.transform(X))
+            #print(sims[-1].coords)
+        self.sims = xr.concat(sims, dim='timestep')
         self.sims.coords['timestep'] = self.sims.coords['timestep']/self.time_sampling_factor
         df_sims = self.sims.to_dataframe(name='value').reset_index()
         df_bonds = df_sims[df_sims.svar.str.startswith('bond')]
         df_cash = df_sims[df_sims.svar.str.startswith('cash_index')].set_index(['svar', 'sim', 'timestep'])
         mat = df_bonds['svar'].str.split('_').str.get(1).astype('float').astype('int')
         ts = df_bonds['timestep'].astype('int')
-        df_bonds['time2mat'] = (mat - ts)
-        df_bonds['svar'] = 'rate_'+df_bonds['time2mat'].astype('str').str.zfill(2)
+        df_bonds.loc[:,'time2mat'] = (mat - ts)
+        df_bonds.loc[:,'svar'] = 'rate_'+df_bonds['time2mat'].astype('str').str.zfill(2)
         
-        df_bonds['rate'] = df_bonds['value']**(-1/df_bonds['time2mat'])-1
+        df_bonds.loc[:,'rate'] = df_bonds['value']**(-1/df_bonds['time2mat'])-1
         df_bonds = df_bonds[['svar', 'sim', 'timestep', 'rate']].set_index(['svar', 'sim', 'timestep'])
         df_out = pd.concat([df_cash, df_bonds], axis=1)   
         #ESG Format - columns are time to maturity
