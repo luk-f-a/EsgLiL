@@ -8,6 +8,7 @@ Created on Tue Nov  7 22:53:54 2017
 import xarray as xr
 import numpy as np
 from scipy.interpolate import make_interp_spline
+from .common import SDE
 
 def hw1f_sigma_calibration(bond_prices, swaption_prices, a):
     """Based on zero coupon bond and swaption prices, it will return 
@@ -156,7 +157,73 @@ def hw1f_b_calibration(bond_prices, a, sigma):
     t = 0
     tp1 = float(bond_prices.coords['maturity'][0])
     p_tp1 = bond_prices[tp1]
-    r_zero = -(np.ln(p_tp1)-np.ln(p_t))/tp1
+    r_zero = -(np.ln(p_tp1)-np.ln(pclass HullWhite1fShortRate(object):
+    """class for (1 Factor) Hull White model of short interest rate
+    This class only implements the short rate
+    SDE: dr(t)= b(t)+dy(t)
+         where y(t)=-a*r(t)+sigma*dW(t)
+         
+
+    The integral of b(t) between 0 and T is denoted as B(t) and can be used
+    instead of b(t). B is deterministic and y(t) is stochastic. In practice,
+    the simulations are based on r(t)= B(t)+y(t)
+    All other parameters retain their meaning from the standard
+    model parametrization dr(t)=[b(t)-a*r(t)]dt+sigma*dW(t)
+    All parameters must be scaled to the unit of time used for the timestep.
+    For example, if the steps are daily (1/252 of a year) then daily a, B and 
+    sigma must be provided. This is because the class does not take a delta_t
+    parameter, and therefore it must be embedded in the parameters such that
+    dr(t)=[b(t)-a*r(t)]dt+sigma*dW(t) => dr(t)=[b(t)-a*r(t)]+sigma*dW(t)
+    
+     Parameters
+    ----------
+        
+    B(t) : callable (with t as only argument)
+        integral from 0 to t of b(t). 
+        
+    a: scalar
+        mean reversion speed
+    
+    sigma : scalar
+        standard deviation
+        
+    """    
+    __slots__ = ('B', 'a', 'sigma', '_yt', 'r')
+    
+    def __init__(self, B=None, a=None, sigma=None, dW=None):
+    
+        self.B = B
+        self.a = a
+        self.sigma = sigma
+        self.y_t = 0
+        self.dW = dW
+
+    def _check_valid_params(self):
+        assert  (self.a is not None and
+        self.B is not None and self.sigma is not None)
+
+    def _to_callable(self, param):
+        if not callable(param):
+            if type(param) is float:
+                param = lambda t: param
+            else:
+                raise TypeError
+        return param
+    
+    def _process_params(self):
+        if self.B is not None:
+            self.B = self._to_callable(self.B)
+        if self.a is not None:
+            self.a = self._to_callable(self.a)
+        if self.sigma is not None:
+            self.sigma = self._to_callable(self.sigma)
+
+    def run_step(self):
+        self._yt += -self.a()*self._yt+self.sigma()*self.dW()
+        self.r = self.B() + self._yt
+        
+    def __call__(self):
+        return self.r_t))/tp1
     t = tp1
     p_t = p_tp1
     #loop on all time steps where second derivatives can be calculated
@@ -226,7 +293,7 @@ def hw1f_B_function(bond_prices, a, sigma):
     B = lambda t: f(t)+ sigma**2/(2*a**2)*(1-np.exp(-a*t))**2
     return B, f(0)
 
-class HullWhite1fShortRate(object):
+class HullWhite1fShortRate(SDE):
     """class for (1 Factor) Hull White model of short interest rate
     This class only implements the short rate
     SDE: dr(t)= b(t)+dy(t)
@@ -257,42 +324,94 @@ class HullWhite1fShortRate(object):
         standard deviation
         
     """    
-    __slots__ = ('B', 'a', 'sigma', '_yt', 'r')
+    __slots__ = ('B', 'a', 'sigma', '_yt', 'dW')
     
     def __init__(self, B=None, a=None, sigma=None, dW=None):
-    
         self.B = B
         self.a = a
         self.sigma = sigma
-        self.y_t = 0
+        self._yt = 0
         self.dW = dW
+        self.t_1 = 0
+        #self._check_valid_params()
 
-    def _check_valid_params(self):
-        assert  (self.a is not None and
-        self.B is not None and self.sigma is not None)
-
-    def _to_callable(self, param):
-        if not callable(param):
-            if type(param) is float:
-                param = lambda t: param
-            else:
-                raise TypeError
-        return param
+    def run_step(self, t):
+#        self._yt += -self.a()*self._yt+self.sigma()*self.dW()
+#        self.out = self.B() + self._yt
+        self._yt += -self.a*self._yt*(t-self.t_1)+self.sigma*self.dW
+        self.value_t = self.B + self._yt        
+        self.t_1 = t
     
-    def _process_params(self):
-        if self.B is not None:
-            self.B = self._to_callable(self.B)
-        if self.a is not None:
-            self.a = self._to_callable(self.a)
-        if self.sigma is not None:
-            self.sigma = self._to_callable(self.sigma)
+    
 
-    def run_step(self):
-        self._yt += -self.a()*self._yt+self.sigma()*self.dW()
-        self.r = self.B() + self._yt
+class HullWhite1fBondPrice(SDE):
+    """class for (1 Factor) Hull White model of short interest rate
+    This class implements the bond prices for maturity T
+    SDE: dP(t, T)/P(t,T) = r(t)*dt + sigma/a*(1-exp(-a*(T-t)))*dW
+         
+    for the Hull White model dr(t)=[b(t)-a*r(t)]dt+sigma*dW(t)
+
+   
+     Parameters
+    ----------
+
+    a: scalar
+        mean reversion speed
+    
+    sigma : scalar
+        standard deviation
+
+    T: scalar or numpy array
+        Bond maturity        
+    """    
+    __slots__ = ('T', 'a', 'sigma', 'P_0', 'r', 'dW', 'dt')
+    
+    def __init__(self, B=None, a=None, sigma=None, dW=None):
+        self.T = T
+        self.a = a
+        self.sigma = sigma
+        self.dW = dW
+        self.value_t= P_0
+        self.t_1 = 0
+        #self._check_valid_params()
+
+    def run_step(self, t):
+        self.value_t = self.value_t * (1 + self.r*(t-self.t_1)
+                                 +self.sigma/self.a*(1-np.exp(-self.a*(self.T-t)))*self.dW)      
+        self.t_1 = t
         
-    def __call__(self):
-        return self.r
+    
+class HullWhite1fCashAccount(SDE):
+    """class for (1 Factor) Hull White model of short interest rate
+    This class implements the cash account
+    SDE: dC(t)/C(t) = r(t)*dt
+         
+    for the Hull White model dr(t)=[b(t)-a*r(t)]dt+sigma*dW(t)
+
+   
+     Parameters
+    ----------
+
+    a: scalar
+        mean reversion speed
+    
+    sigma : scalar
+        standard deviation
+
+    T: scalar or numpy array
+        Bond maturity        
+    """    
+    __slots__ = ('T', 'a', 'sigma', 'P_0', 'r', 'dW', 'dt')
+    
+    def __init__(self, r=None):
+        self.r = r
+        self.value_t = 1
+        self.t_1 = 0
+        #self._check_valid_params()
+
+    def run_step(self, t):
+        self.value_t = self.value_t * exp(self.r*(t-self.t_1))
+        self.t_1 = t
 
         
 class HullWhite1fModel(object):

@@ -98,7 +98,7 @@ class NormalRng(Rng, Variable):
                                                check_valid='raise')
         return out
     
-class SDE(object):
+class SDE(Variable):
     __slots__ = ('out')
     
     def _check_valid_params(self):

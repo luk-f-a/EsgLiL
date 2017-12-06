@@ -11,36 +11,38 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.getcwd()))
 from esglil import rng
-from esglil import pipeline
-from esglil import ir_models
+from esglil.esg import esg
+from esglil.common import TimeDependentParameter
+from esglil.ir_models import HullWhite1fShortRate, HullWhite1fBondPrice, HullWhite1fCashAccount
 import numpy as np
-import xarray as xr
+import pandas as pd
 from scipy.stats import normaltest, kstest
 
 #TODO: test delta_t_in and out different than one and different than each other
 
         
-#class hw1f_test_short_rate_xr(unittest.TestCase):
-#    def setUp(self):
-#        self.rng = rng.NormalRng(shape={'svar':1, 'sim':10, 'timestep':5},
-#                                mean=[0], cov=[[1]])
-#        HW = ir_models.HullWhite1fModel
-#        fixed_b = 0.05
-#        b = lambda x: fixed_b
-#        self.r_zero = 0.05
-#        self.hw = HW(a=1.01, b=b, sigma=0.02, r_zero=self.r_zero, 
-#                      delta_t_in=1, delta_t_out=1)
-#        
-#    def test_shape(self):
-#        X = self.rng.generate()
-#        sims = self.hw.transform(X)
-#        self.assertEqual(type(sims), xr.DataArray,
-#                         'incorrect type')
-#        self.assertEqual(sims.shape, (1, 10,5))
-#        for r in sims.values.squeeze():
-#            row =  np.insert(r,0,self.r_zero)
-#            x = np.insert(sims.coords['timestep'].values,0,0)
-#            plt.plot(x, row)
+class hw1f_test_short_rate_xr(unittest.TestCase):
+    def setUp(self):
+        delta_t = 1
+        max_t = 5
+        dW = rng.NormalRng(dims=1, sims=10, mean=[0], cov=[[1/delta_t]])
+    #    a = ConstantParameter(0.2)
+    #    sigma = ConstantParameter(0.01)
+        a = 0.001
+        sigma = 0.01
+        B = TimeDependentParameter(function=lambda t: 0.1)
+        r = ir_models.HullWhite1fShortRate(B=B, a=a, sigma=sigma, dW=dW)
+        self.esg = ESG(dt_sim=delta_t, dt_out=1, dW=dW, B=B, r=r)
+
+        
+
+        
+    def test_shape(self):
+        df_full_run = esg.full_run_to_pandas(40)
+        self.assertEqual(type(df_full_run), pd.DataFrame,
+                         'incorrect type')
+        self.assertEqual(df_full_run.shape, (10*5, 3))
+        df_full_run[['r']].plot()
 
 class hw1f_leakage_tests(unittest.TestCase):    
     def setUp(self):
