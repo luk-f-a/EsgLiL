@@ -5,8 +5,6 @@ Created on Sun Sep 24 17:27:12 2017
 
 @author: luk-f-a
 """
-
-
 import numpy as np
 from .common import Variable
 
@@ -88,4 +86,4 @@ class NormalRng(Rng, Variable):
         out = np.random.multivariate_normal(self.mean, self.cov, 
                                                self.shape,
                                                check_valid='raise')
-        return out
+        return out.squeeze()
