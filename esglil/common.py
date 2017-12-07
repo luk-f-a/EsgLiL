@@ -36,8 +36,8 @@ def _check_interface(obj):
     for attr in Variable:
         assert hasattr(obj, attr) 
         
-class SDE(object):
-    __slots__ = ('value_t')
+class SDE(Variable):
+    __slots__ = ('value_t', 't_1')
     
     def _check_valid_params(self):
         for param in self.__slots__:
