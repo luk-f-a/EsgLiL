@@ -63,8 +63,8 @@ class TimeDependentParameter(Variable):
     def run_step(self, t):
         self.value_t = self.f(t)
         
-#    def __call__(self):
-#        return self.out
+    def __call__(self, t):
+        return self.f(t)
 
 #class ConstantParameter(Variable):
 #    __slots__ = ('out')
