@@ -312,7 +312,7 @@ class HullWhite1fBondPrice(SDE):
 
     def run_step(self, t):
         self.value_t = self.value_t * (1 + self.r*(t-self.t_1)
-                                 +self.sigma/self.a*(1-np.exp(-self.a*(self.T-t)))*self.dW)      
+                                 +self.sigma/self.a*(1-np.exp(-self.a*(self.T-t)))*(self.dW*1))      
         self.t_1 = t
         
     

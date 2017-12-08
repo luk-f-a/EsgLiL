@@ -16,11 +16,27 @@ class ESG(object):
         self.dt_sim = Fraction(dt_sim)
         
         
-    def run_step(self):
-        self.clock += self.dt_sim
-        for model in self.eq:
-            self.eq[model].run_step(float(self.clock))
-            
+    def run_step(self, t=None):
+        if t is None:
+            steps = 1
+        else:
+            steps = int((t-self.clock)/self.dt_sim)
+        for _ in range(steps):
+            self.clock += self.dt_sim
+            for model in self.eq:
+                self.eq[model].run_step(float(self.clock))
+    
+    def full_run(self, dt_out, max_t):
+        dt_out = Fraction(dt_out)
+        assert float(dt_out/self.dt_sim) % 1 == 0
+        out = {}
+        for ts in range(1, int(float(max_t/self.dt_sim))+1):
+            self.run_step()
+            t = float(ts*self.dt_sim)
+            if ts % float(dt_out/self.dt_sim) == 0:
+                out[t] = self.value_t
+        return out
+        
     def full_run_to_pandas(self, dt_out, max_t):
         import pandas as pd
         dt_out = Fraction(dt_out)
@@ -50,6 +66,13 @@ class ESG(object):
     
     @property
     def value_t(self):
-        return {model: self.eq[model].value_t for model in self.eq}
+        out = {}
+        for model in self.eq: 
+            model_out = self.eq[model].value_t
+            if type(model_out) is dict:
+                out.update(model_out)
+            else:
+                out[model] = model_out
+        return out
 #    def __call__(self):
 #        return {model:self.eq[model]() for model in self.eq}

@@ -23,13 +23,13 @@ class Variable(object):
         return self.value_t ** other        
     
     def __radd__(self, other):
-        return self.value_t + other
+        return other + self.value_t
         
     def __rsub__(self, other):
         return other - self.value_t
         
     def __rmul__(self, other):
-        return self.value_t * other  
+        return other  * self.value_t
     
     
 def _check_interface(obj):
