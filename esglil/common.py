@@ -23,6 +23,7 @@ class Variable(object):
         return self.value_t ** other        
     
     def __radd__(self, other):
+        print('radd')
         return other + self.value_t
         
     def __rsub__(self, other):
@@ -31,6 +32,42 @@ class Variable(object):
     def __rmul__(self, other):
         return other  * self.value_t
     
+    def __getitem__(self, key):
+        return VariableSlice(self, key)
+        
+class VariableSlice(object):
+    __slots__ = ['variable', 'key']
+    
+    def __init__(self, var, key):
+        self.variable = var
+        self.key = key
+        
+    def __add__(self, other):
+        return self.variable.value_t[self.key,...] + other
+    
+    def __sub__(self, other):
+        return self.variable.value_t[self.key,...] - other
+        
+    def __mul__(self, other):
+        return self.variable.value_t[self.key,...] * other        
+    
+    def __truediv__(self, other):
+        return self.variable.value_t[self.key,...] / other
+        
+    def __pow__(self, other):
+        return self.variable.value_t[self.key,...] ** other        
+    
+    def __radd__(self, other):
+        return other + self.variable.value_t[self.key,...]
+        
+    def __rsub__(self, other):
+        return other - self.variable.value_t[self.key,...]
+        
+    def __rmul__(self, other):
+        return other  * self.variable.value_t[self.key,...]
+    
+    
+  
     
 def _check_interface(obj):
     for attr in Variable:

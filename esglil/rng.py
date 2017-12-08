@@ -6,17 +6,20 @@ Created on Sun Sep 24 17:27:12 2017
 @author: luk-f-a
 """
 import numpy as np
-from .common import Variable
+from esglil.common import Variable
+from esglil.common import SDE
 
-class Rng(object):
+class Rng(Variable):
     """Base class for random number generators
     """
     __slots__ = ('shape', 'value_t')
 
     def __init__(self, dims, sims):
-        self.shape = (dims, sims)
+        self.sims = sims
+        #self.value_t = np.zeros(shape=(dims, sims))
                 
     def run_step(self, t):
+        #self.value_t[...] = self.generate()
         self.value_t = self.generate()
         
     def generate(self):
@@ -47,7 +50,7 @@ class UniformRng(Rng):
         return out
 
 
-class NormalRng(Rng, Variable):
+class NormalRng(Rng):
     """class for normal random number generation
 
      Parameters
@@ -82,8 +85,27 @@ class NormalRng(Rng, Variable):
         """Return the next iteration of the random number generator
         """
         self._check_valid_params()
-        
         out = np.random.multivariate_normal(self.mean, self.cov, 
-                                               self.shape,
-                                               check_valid='raise')
+                                               size=self.sims,
+                                               check_valid='raise').T
         return out.squeeze()
+    
+class WienerProcess(SDE):
+    """class for accumulating Wiener increments into a running sum
+    
+  
+     Parameters
+    ----------
+
+     None
+    """    
+    __slots__ = ('dW')
+    
+    def __init__(self, dW):
+        self.value_t = 0
+        self.dW = dW
+
+
+    def run_step(self, t):
+        self.value_t = self.dW + self.value_t
+   

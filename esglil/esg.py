@@ -60,8 +60,9 @@ class ESG(object):
             if len(val.shape)<=1:
                 value_dict[model] = val
             else:
-                for d in range(val.shape[1]):
-                    value_dict[model+'_'+str(d).zfill(2)] = val[...,d].squeeze()
+                digits = len(str(val.shape[0]))
+                for d in range(val.shape[0]):
+                    value_dict[model+'_'+str(d).zfill(digits)] = val[d,:].squeeze()
         return pd.DataFrame(value_dict)
     
     @property

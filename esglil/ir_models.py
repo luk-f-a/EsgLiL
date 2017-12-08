@@ -271,9 +271,7 @@ class HullWhite1fShortRate(SDE):
         #self._check_valid_params()
 
     def run_step(self, t):
-#        self._yt += -self.a()*self._yt+self.sigma()*self.dW()
-#        self.out = self.B() + self._yt
-        self._yt += -self.a*self._yt*(t-self.t_1)+self.sigma*self.dW
+        self._yt += self.dW*self.sigma-self.a*self._yt*(t-self.t_1)
         self.value_t = self.B + self._yt        
         self.t_1 = t
     
@@ -313,6 +311,7 @@ class HullWhite1fBondPrice(SDE):
     def run_step(self, t):
         self.value_t = self.value_t * (1 + self.r*(t-self.t_1)
                                  +self.sigma/self.a*(1-np.exp(-self.a*(self.T-t)))*(self.dW*1))      
+
         self.t_1 = t
         
     
@@ -345,7 +344,8 @@ class HullWhite1fCashAccount(SDE):
         #self._check_valid_params()
 
     def run_step(self, t):
-        self.value_t = self.value_t * np.exp(self.r*(t-self.t_1))
+#        self.value_t = self.value_t * np.exp(self.r*(t-self.t_1))
+        self.value_t = self.value_t*np.exp(self.r*(t-self.t_1))
         self.t_1 = t
 
         

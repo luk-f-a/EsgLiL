@@ -36,7 +36,7 @@ class GeometricBrownianMotion(SDE):
         #self._check_valid_params()
 
     def run_step(self, t):
-        self.value_t = self.value_t *(1 + self.mu*(t-self.t_1)+self.sigma*self.dW)
+        self.value_t = self.value_t*(1 + self.mu*(t-self.t_1)+self.dW*self.sigma)
         self.t_1 = t
         
         
