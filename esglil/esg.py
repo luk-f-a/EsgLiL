@@ -10,6 +10,7 @@ from fractions import Fraction
 import numpy as np
 
 class ESG(object):
+    __slots = ['eq', 'clock', 'dt_sim']
     def __init__(self, dt_sim, **models):
         self.eq = models
         self.clock = 0
@@ -75,5 +76,8 @@ class ESG(object):
             else:
                 out[model] = model_out
         return out
+    
+    def __getitem__(self, key):
+        return self.eq[key]
 #    def __call__(self):
 #        return {model:self.eq[model]() for model in self.eq}

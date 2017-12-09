@@ -37,8 +37,6 @@ class Variable(object):
     def __radd__(self, other):
         if isinstance(other, Variable):
             return other.value_t + self.value_t
-#        if other is None:
-#            return self.value_t
         else:
             return other + self.value_t
         
@@ -53,19 +51,32 @@ class Variable(object):
     
     def __getitem__(self, key):
         return VariableSlice(self, key)
+
         
 class VariableSlice(object):
     __slots__ = ['variable', 'key']
-    
+
     def __init__(self, var, key):
         self.variable = var
         self.key = key
-        
+    
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        if inputs[1] is self:
+            return ufunc(inputs[0], self.variable.value_t[self.key,...])
+        else:
+            return ufunc(self.variable.value_t[self.key,...], inputs[1])
+    
     def __add__(self, other):
-        return self.variable.value_t[self.key,...] + other
+        if isinstance(other, Variable):
+            return self.variable.value_t[self.key,...] + other.value_t
+        else:
+            return self.variable.value_t[self.key,...] + other
     
     def __sub__(self, other):
-        return self.variable.value_t[self.key,...] - other
+        if isinstance(other, Variable):
+            return self.variable.value_t[self.key,...] - other.value_t
+        else:
+            return self.variable.value_t[self.key,...] - other
         
     def __mul__(self, other):
         return self.variable.value_t[self.key,...] * other        
@@ -77,14 +88,19 @@ class VariableSlice(object):
         return self.variable.value_t[self.key,...] ** other        
     
     def __radd__(self, other):
-        return other + self.variable.value_t[self.key,...]
+        if isinstance(other, Variable):
+            return other.value_t + self.variable.value_t[self.key,...]
+        else:
+            return other + self.variable.value_t[self.key,...]
         
     def __rsub__(self, other):
-        return other - self.variable.value_t[self.key,...]
+        if isinstance(other, Variable):
+            return other.value_t - self.variable.value_t[self.key,...]
+        else:
+            return other - self.variable.value_t[self.key,...]
         
     def __rmul__(self, other):
         return other  * self.variable.value_t[self.key,...]
-    
     
   
     

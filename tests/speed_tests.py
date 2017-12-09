@@ -101,7 +101,7 @@ def equity_stochastic_interest_rate(dt=1, sims=1000):
 #    bond_prices = {i:1 for i in range(1,41)}
 #    P = {'Bond_{}'.format(i):HullWhite1fBondPrice(B=B, a=a, r=r, sigma=sigma, dW=dW, 
 #                             P_0=bond_prices[i], T=i) for i in range(1,41)}
-    bond_prices = np.ones(shape=(40,1))*np.ones(shape=(1,sims))
+    bond_prices = np.ones(shape=(40,1))#*np.ones(shape=(1,sims))
     r = HullWhite1fShortRate(B=B, a=a, sigma=sigma, dW=dW[0])
     T = np.arange(1,41).reshape(-1,1)
     P = HullWhite1fBondPrice(B=B, a=a, r=r, sigma=sigma, dW=dW[0], 
@@ -128,9 +128,9 @@ def time_surface_fc(fc, params):
     print(str(datetime.datetime.now()), results)
     
 
-print(time_fc(hw1f_test_short_rate_bonds_cash, (1/250,1000)))
-print(time_fc(hw1f_test_short_rate_vector_bonds_cash, (1/250,1000)))
-print(time_fc(hw1f_test_nested_esg_short_rate_vector_bonds_cash, (1/250,1000)))
+#print(time_fc(hw1f_test_short_rate_bonds_cash, (1/250,1000)))
+#print(time_fc(hw1f_test_short_rate_vector_bonds_cash, (1/250,1000)))
+#print(time_fc(hw1f_test_nested_esg_short_rate_vector_bonds_cash, (1/250,1000)))
 print(time_fc(equity_stochastic_interest_rate, (1/250,1000)))
 #time_surface_fc(hw1f_test_short_rate_vector_bonds_cash, 
 #                params= chain( product([1,0.1], [1000,10000]),
