@@ -7,11 +7,23 @@ Created on Wed Dec  6 22:16:19 2017
 """
 
 class Variable(object):
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        if inputs[1] is self:
+            return ufunc(inputs[0], inputs[1].value_t)
+        else:
+            return ufunc(inputs[0].value_t, inputs[1])
+    
     def __add__(self, other):
-        return self.value_t + other
+        if isinstance(other, Variable):
+            return self.value_t + other.value_t
+        else:
+            return self.value_t + other
     
     def __sub__(self, other):
-        return self.value_t - other
+        if isinstance(other, Variable):
+            return self.value_t - other.value_t
+        else:
+            return self.value_t - other
         
     def __mul__(self, other):
         return self.value_t * other        
@@ -23,11 +35,18 @@ class Variable(object):
         return self.value_t ** other        
     
     def __radd__(self, other):
-        print('radd')
-        return other + self.value_t
+        if isinstance(other, Variable):
+            return other.value_t + self.value_t
+#        if other is None:
+#            return self.value_t
+        else:
+            return other + self.value_t
         
     def __rsub__(self, other):
-        return other - self.value_t
+        if isinstance(other, Variable):
+            return other.value_t - self.value_t
+        else:
+            return other - self.value_t
         
     def __rmul__(self, other):
         return other  * self.value_t
