@@ -30,7 +30,7 @@ def Esg_e_sr_bonds_cash(delta_t, sims, rho, bond_prices, hw_a = 0.001, hw_sigma 
     P_0 = np.array(list(bond_prices.values())).reshape(-1,1)
     T = np.array(list(bond_prices.keys())).reshape(-1,1)
     P = HullWhite1fBondPrice(B=B, a=hw_a, r=r, sigma=hw_sigma, dW=dW[0], 
-                             P_0=bond_prices, T=T)
+                             P_0=P_0, T=T)
     C = HullWhite1fCashAccount(r=r)
     S = GeometricBrownianMotion(mu=r, sigma=gbm_sigma, dW=dW[1])
     esg = ESG(dt_sim=delta_t, dW=dW, B=B, r=r, cash=C, P=P, S=S)
