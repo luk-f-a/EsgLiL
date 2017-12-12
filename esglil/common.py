@@ -45,6 +45,12 @@ class Variable(object):
             return other.value_t - self.value_t
         else:
             return other - self.value_t
+            
+    def __rtruediv__(self, other):
+        if isinstance(other, Variable):
+            return other.value_t / self.value_t
+        else:
+            return other / self.value_t
         
     def __rmul__(self, other):
         return other  * self.value_t
@@ -99,8 +105,17 @@ class VariableSlice(object):
         else:
             return other - self.variable.value_t[self.key,...]
         
+    def __rtruediv__(self, other):
+        if isinstance(other, Variable):
+            return other.value_t / self.variable.value_t[self.key,...]
+        else:
+            return other / self.variable.value_t[self.key,...]
+        
     def __rmul__(self, other):
-        return other  * self.variable.value_t[self.key,...]
+        if isinstance(other, Variable):
+            return other.value_t * self.variable.value_t[self.key,...]
+        else:
+            return other * self.variable.value_t[self.key,...]
     
   
     
