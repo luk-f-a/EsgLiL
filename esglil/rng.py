@@ -18,21 +18,21 @@ class Rng(object):
     def __init__(self, shape, svar_names=None, loop_dim=None):
         assert loop_dim is None or type(loop_dim) is str
         if type(loop_dim) is str:
-            assert loop_dim in ('svar', 'sim', 'time')
+            assert loop_dim in ('svar', 'sim', 'timestep')
         if isinstance(shape, tuple):
             self.shape = shape
             self._use_xr = False
         elif isinstance(shape, dict):
             self._use_xr = True
-            self.shape = [shape['svar'], shape['sim'], shape['time']]
-            self._dims = ['svar','sim', 'time']
+            self.shape = [shape['svar'], shape['sim'], shape['timestep']]
+            self._dims = ['svar','sim', 'timestep']
             if svar_names is None:
                 svars = ['rv_{}'.format(i) for i in range(1, shape['svar']+1)]
             else:
                 svars = svar_names
             self._coords = {'svar': svars,
                             'sim': range(1, shape['sim']+1),
-                            'time': range(1, shape['time']+1)}
+                            'timestep': range(1, shape['timestep']+1)}
             #self._to_xr = lambda data, me: xr.DataArray(data,
             #                          dims=me._dims,
             #                          coords=me._coords)
@@ -197,11 +197,11 @@ class RngRecorder(object):
             if self.rand_numbers is None:
                 self.rand_numbers = X
             else:
-                self.rand_numbers = xr.concat([self.rand_numbers, X], dim='time')
+                self.rand_numbers = xr.concat([self.rand_numbers, X], dim='timestep')
         else:
             if self.rand_numbers is None:
                 self.rand_numbers = self._uncorrelate(X)
             else:
                 unc = self._uncorrelate(X)
-                self.rand_numbers = xr.merge([self.rand_numbers, unc], dim='time')
+                self.rand_numbers = xr.merge([self.rand_numbers, unc], dim='timestep')
         return X

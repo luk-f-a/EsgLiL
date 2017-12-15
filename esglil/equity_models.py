@@ -39,8 +39,10 @@ class GeometricBrownianMotion(object):
         
     def _check_valid_params(self):
         assert self.delta_t_out >= self.delta_t_in
-        assert self.delta_t_out % self.delta_t_in == 0, ('delta out is {} and'
-        ' delta in is {}').format(self.delta_t_out, self.delta_t_in)
+        dt_ratio = round(self.delta_t_out/self.delta_t_in,5)
+        assert dt_ratio == int(dt_ratio), ('delta out is {} and'
+        ' delta in is {}. Ratio is {}').format(self.delta_t_out, self.delta_t_in,
+                      round(self.delta_t_out / self.delta_t_in,5))
 
     def _check_valid_X(self, X):
         #TODO: check that X is either an xarray with the right dimensions
@@ -73,15 +75,16 @@ class GeometricBrownianMotion(object):
         assert not (self.mu is None or self.sigma is None)
         self._check_valid_params()
         self._check_valid_X(X)
-        dt_ratio = int(self.delta_t_out/self.delta_t_in)
+        dt_ratio = int(round(self.delta_t_out/self.delta_t_in,5))
         if self._use_xr:
             S = X.copy()
             S_t = self.S
-            for t in S.time:
-                S_t += self.mu*S_t*self.delta_t_in+self.sigma*S_t*X.loc[{'time':t}]
-                S.loc[{'time':t}] = S_t
+            for ts in S.timestep:
+                t = ts*self.delta_t_in
+                S_t += self.mu*S_t*self.delta_t_in+self.sigma*S_t*X.loc[{'timestep':ts}]
+                S.loc[{'timestep':ts}] = S_t
             self.S = S_t
-            S_out = S.loc[{'time':slice(dt_ratio,None,dt_ratio)}]
+            S_out = S.loc[{'timestep':slice(dt_ratio-1, None, dt_ratio)}]
         else:
             self.S = self.mu*self.S*self.delta_t_in+self.sigma*self.S*X
             S_out = self.S
