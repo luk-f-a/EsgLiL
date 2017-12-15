@@ -26,7 +26,8 @@ class Variable(object):
             return self.value_t - other
         
     def __mul__(self, other):
-        return self.value_t * other        
+        return self.value_t * other
+    
     
     def __truediv__(self, other):
         return self.value_t / other
@@ -45,21 +46,27 @@ class Variable(object):
             return other.value_t - self.value_t
         else:
             return other - self.value_t
-            
+
     def __rtruediv__(self, other):
         if isinstance(other, Variable):
             return other.value_t / self.value_t
         else:
-            return other / self.value_t
+            return other / self.value_t        
         
     def __rmul__(self, other):
         return other  * self.value_t
     
     def __getitem__(self, key):
-        return VariableSlice(self, key)
+        return VariableView(self, key)
+
+    def __call__(self):
+        """ideally should only be used for debugging
+        """
+        return self.value_t
+    
 
         
-class VariableSlice(object):
+class VariableView(object):
     __slots__ = ['variable', 'key']
 
     def __init__(self, var, key):
@@ -104,7 +111,7 @@ class VariableSlice(object):
             return other.value_t - self.variable.value_t[self.key,...]
         else:
             return other - self.variable.value_t[self.key,...]
-        
+
     def __rtruediv__(self, other):
         if isinstance(other, Variable):
             return other.value_t / self.variable.value_t[self.key,...]
@@ -117,7 +124,13 @@ class VariableSlice(object):
         else:
             return other * self.variable.value_t[self.key,...]
     
-  
+    def __iter__(self):
+        return iter(self.variable.value_t[self.key,...])
+    
+    def __call__(self):
+        """ideally should only be used for debugging
+        """
+        return self.variable.value_t[self.key,...]
     
 def _check_interface(obj):
     for attr in Variable:
