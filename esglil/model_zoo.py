@@ -33,6 +33,6 @@ def Esg_e_sr_bonds_cash(delta_t, sims, rho, bond_prices, hw_a = 0.001, hw_sigma 
                              P_0=P_0, T=T)
     C = HullWhite1fCashAccount(r=r)
     S = GeometricBrownianMotion(mu=r, sigma=gbm_sigma, dW=dW[1])
-    esg = ESG(dt_sim=delta_t, dW=dW, B=B, r=r, cash=C, P=P, S=S)
+    esg = ESG(dt_sim=delta_t, dW=dW,B=B, r=r, cash=C, P=P, S=S)
     
     return esg
