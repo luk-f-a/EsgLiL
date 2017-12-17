@@ -239,12 +239,7 @@ class HullWhite1fShortRate(SDE):
     the simulations are based on r(t)= B(t)+y(t)
     All other parameters retain their meaning from the standard
     model parametrization dr(t)=[b(t)-a*r(t)]dt+sigma*dW(t)
-    All parameters must be scaled to the unit of time used for the timestep.
-    For example, if the steps are daily (1/252 of a year) then daily a, B and 
-    sigma must be provided. This is because the class does not take a delta_t
-    parameter, and therefore it must be embedded in the parameters such that
-    dr(t)=[b(t)-a*r(t)]dt+sigma*dW(t) => dr(t)=[b(t)-a*r(t)]+sigma*dW(t)
-    
+     
      Parameters
     ----------
         

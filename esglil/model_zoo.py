@@ -12,12 +12,11 @@ from esglil.esg import ESG
 from esglil.equity_models import GeometricBrownianMotion
 from esglil import rng
 
-def Esg_e_sr_bonds_cash(delta_t, sims, rho, bond_prices, hw_a = 0.001, hw_sigma = 0.01,
+def esg_e_sr_bonds_cash(delta_t, sims, rho, bond_prices, hw_a = 0.001, hw_sigma = 0.01,
                            gbm_sigma=0.2):
     assert type(bond_prices) is dict
 #    assert len(bond_prices.shape)==2
 #    assert bond_prices.shape[1]==1
-    delta_t = delta_t
     rho = 0.2
     corr = [[1, rho], [rho, 1]]
     C = np.diag([delta_t, delta_t])
@@ -32,7 +31,17 @@ def Esg_e_sr_bonds_cash(delta_t, sims, rho, bond_prices, hw_a = 0.001, hw_sigma 
     P = HullWhite1fBondPrice(B=B, a=hw_a, r=r, sigma=hw_sigma, dW=dW[0], 
                              P_0=P_0, T=T)
     C = HullWhite1fCashAccount(r=r)
+    W = rng.WienerProcess(dW)
     S = GeometricBrownianMotion(mu=r, sigma=gbm_sigma, dW=dW[1])
-    esg = ESG(dt_sim=delta_t, dW=dW,B=B, r=r, cash=C, P=P, S=S)
+    esg = ESG(dt_sim=delta_t, dW=dW, W=W, B=B, r=r, cash=C, P=P, S=S)
+    
+    return esg
+
+
+def esg_equity(delta_t, sims, r=0.03, gbm_sigma=0.2):
+    dW = rng.NormalRng(dims=1, sims=sims, mean=[0], cov=[[delta_t]])
+    W = rng.WienerProcess(dW)
+    S = GeometricBrownianMotion(mu=r, sigma=gbm_sigma, dW=dW)
+    esg = ESG(dt_sim=delta_t, dW=dW, W=W, S=S)
     
     return esg
