@@ -88,6 +88,7 @@ class NormalRng(Rng):
         out = np.random.multivariate_normal(self.mean, self.cov, 
                                                size=self.sims,
                                                check_valid='raise').T
+#        print(out.squeeze()[:2])
         return out.squeeze()
     
 class WienerProcess(SDE):

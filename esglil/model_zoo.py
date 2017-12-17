@@ -39,7 +39,7 @@ def esg_e_sr_bonds_cash(delta_t, sims, rho, bond_prices, hw_a = 0.001, hw_sigma 
 
 
 def esg_equity(delta_t, sims, r=0.03, gbm_sigma=0.2):
-    dW = rng.NormalRng(dims=1, sims=sims, mean=[0], cov=[[delta_t]])
+    dW = rng.NormalRng(dims=1, sims=sims, mean=[0], cov=[[float(delta_t)]])
     W = rng.WienerProcess(dW)
     S = GeometricBrownianMotion(mu=r, sigma=gbm_sigma, dW=dW)
     esg = ESG(dt_sim=delta_t, dW=dW, W=W, S=S)

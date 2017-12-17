@@ -14,14 +14,14 @@ class ESG(object):
     def __init__(self, dt_sim, **models):
         self.eq = models
         self.clock = 0
-        self.dt_sim = Fraction(dt_sim)
+        self.dt_sim = Fraction(1,int(round(1/dt_sim,0)))
         
         
     def run_step(self, t=None):
         if t is None:
             steps = 1
         else:
-            steps = int((t-self.clock)/self.dt_sim)
+            steps = int(round((t-self.clock)/self.dt_sim,0))
         for _ in range(steps):
             self.clock += self.dt_sim
             for model in self.eq:
