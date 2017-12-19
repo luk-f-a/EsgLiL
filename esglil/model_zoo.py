@@ -9,7 +9,7 @@ import numpy as np
 from esglil.common import TimeDependentParameter, SDE
 from esglil.ir_models import HullWhite1fShortRate, HullWhite1fCashAccount,HullWhite1fBondPrice, hw1f_B_function
 from esglil.esg import ESG
-from esglil.equity_models import GeometricBrownianMotion
+from esglil.equity_models import GeometricBrownianMotion, GBM_exact
 from esglil import rng
 
 def esg_e_sr_bonds_cash(delta_t, sims, rho, bond_prices, hw_a = 0.001, hw_sigma = 0.01,
@@ -43,5 +43,14 @@ def esg_equity(delta_t, sims, r=0.03, gbm_sigma=0.2):
     W = rng.WienerProcess(dW)
     S = GeometricBrownianMotion(mu=r, sigma=gbm_sigma, dW=dW)
     esg = ESG(dt_sim=delta_t, dW=dW, W=W, S=S)
+    
+    return esg
+
+def esg_equity_exact(delta_t, sims, r=0.03, gbm_sigma=0.2):
+    dW = rng.NormalRng(dims=1, sims=sims, mean=[0], cov=[[float(delta_t)]])
+    W = rng.WienerProcess(dW)
+    S = GeometricBrownianMotion(mu=r, sigma=gbm_sigma, dW=dW)
+    Se = GBM_exact(mu=r, sigma=gbm_sigma, W=W)
+    esg = ESG(dt_sim=delta_t, dW=dW, W=W, Se=Se, S=S)
     
     return esg
