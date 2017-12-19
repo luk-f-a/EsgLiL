@@ -11,10 +11,9 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.getcwd()))
 from esglil import rng
-from esglil import pipeline
 from esglil import equity_models
 from esglil.common import TimeDependentParameter
-from esglil.ir_models import HullWhite1fShortRate, HullWhite1fCashAccount
+from esglil.ir_models import HullWhite1fShortRate, HullWhite1fCashAccount, DeterministicBankAccount
 from esglil.esg import ESG
 import numpy as np
 import xarray as xr
@@ -30,7 +29,7 @@ class gbm_basic_test(unittest.TestCase):
         self.esg = ESG(dt_sim=delta_t, dW=dW, S=S)
 
     def test_shape(self):
-        df_full_run = self.esg.full_run_to_pandas(dt_out=1, max_t=40)
+        df_full_run = self.esg.run_multistep_to_pandas(dt_out=1, max_t=40)
         self.assertEqual(type(df_full_run), pd.DataFrame,
                          'incorrect type')
         self.assertEqual(df_full_run.shape, (10*40, 2))
@@ -48,14 +47,14 @@ class gbm_leakage_test(unittest.TestCase):
         dW = rng.NormalRng(dims=1, sims=50000, mean=[0], cov=[[delta_t]])
         self.mu = 0.02
         self.sigma = 0.2
+        cash = DeterministicBankAccount(r=self.mu)
         S = equity_models.GeometricBrownianMotion(mu=self.mu, sigma=self.sigma, dW=dW)
-        self.esg = ESG(dt_sim=delta_t, dW=dW, S=S)
+        self.esg = ESG(dt_sim=delta_t, dW=dW, cash=cash, S=S)
 
     def test_mean(self):
-        df_full_run = self.esg.full_run_to_pandas(dt_out=1, max_t=40)
-        cash = np.exp(np.arange(1,41)*self.mu)
-        discounted_S = df_full_run['S'].unstack('time')/cash
-        mc_mean = discounted_S.mean(axis=0).values
+        df_full_run = self.esg.run_multistep_to_pandas(dt_out=1, max_t=40)
+        discounted_S = df_full_run['S']/df_full_run['cash']
+        mc_mean = discounted_S.groupby(level='time').mean().values
         ref_mean = 100*np.ones((1,40))
         errors = mc_mean/ref_mean-1
         if not np.all(np.less(np.abs(errors), 0.01)):
@@ -79,7 +78,7 @@ class gbm_statistical_test_stochastic_r(unittest.TestCase):
         self.esg = ESG(dt_sim=delta_t, dW=dW, r=r, cash=C, S=S)
         
     def test_mean(self):
-        df_full_run = self.esg.full_run_to_pandas(dt_out=1, max_t=40)
+        df_full_run = self.esg.run_multistep_to_pandas(dt_out=1, max_t=40)
         df_full_run['S/cash'] = df_full_run['S']/df_full_run['cash']
         mc_mean = df_full_run['S/cash'].groupby('time').mean().values
         ref_mean = 100*np.ones((1,40))
@@ -104,7 +103,7 @@ class gbm_test_stochastic_int_rate(unittest.TestCase):
         self.esg = ESG(dt_sim=delta_t, dW=dW, r=r, S=S)
 
     def test_shape(self):
-        df_full_run = self.esg.full_run_to_pandas(dt_out=1, max_t=40)
+        df_full_run = self.esg.run_multistep_to_pandas(dt_out=1, max_t=40)
         #print(self.esg.df_value_t())
         self.assertEqual(type(df_full_run), pd.DataFrame,
                          'incorrect type')

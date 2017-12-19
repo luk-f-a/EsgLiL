@@ -343,4 +343,15 @@ class HullWhite1fCashAccount(SDE):
         self.value_t = self.value_t*np.exp(self.r*(t-self.t_1))
         self.t_1 = t
 
-        
+ 
+class DeterministicBankAccount(SDE):
+    """for discounting under deterministic interest rates
+    """
+    __slots__ = ('r')
+    
+    def __init__(self, r):
+        self.r = r
+        self.value_t = 1
+ 
+    def run_step(self, t):
+        self.value_t = np.exp(self.r*t)       

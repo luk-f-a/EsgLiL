@@ -33,7 +33,7 @@ class hw1f_test_short_rate(unittest.TestCase):
         self.esg = ESG(dt_sim=delta_t, dW=dW, B=B, r=r)
 
     def test_shape(self):
-        df_full_run = self.esg.full_run_to_pandas(dt_out=1, max_t=40)
+        df_full_run = self.esg.run_multistep_to_pandas(dt_out=1, max_t=40)
         self.assertEqual(type(df_full_run), pd.DataFrame,
                          'incorrect type')
         self.assertEqual(df_full_run.shape, (10*40, 3))
@@ -105,7 +105,7 @@ class hw1f_leakage_tests(unittest.TestCase):
         """Test that starting bond prices can be recovered
         """
         
-        df_sims = self.esg.full_run_to_pandas(dt_out=1, max_t=40)
+        df_sims = self.esg.run_multistep_to_pandas(dt_out=1, max_t=40)
         df_sims = df_sims.swaplevel(0,1)
         df_sims = df_sims.stack()
         df_sims.name = 'value'
@@ -135,7 +135,7 @@ class hw1f_stat_test_short_rate(unittest.TestCase):
         sigma = 0.01
         r = HullWhite1fShortRate(B=B, a=a, sigma=sigma, dW=self.dW)
         self.esg = ESG(dt_sim=self.delta_t, dW=self.dW, B=B, r=r)
-        self.df_full_run = self.esg.full_run_to_pandas(dt_out=1, max_t=10)
+        self.df_full_run = self.esg.run_multistep_to_pandas(dt_out=1, max_t=10)
        
 
         mean_ = self.df_full_run[['r']].groupby('time').mean().values
@@ -151,10 +151,10 @@ class hw1f_stat_test_short_rate(unittest.TestCase):
         sigma = 0.01
         r = HullWhite1fShortRate(B=B, a=a, sigma=sigma, dW=self.dW)
         self.esg = ESG(dt_sim=self.delta_t, dW=self.dW, B=B, r=r)
-        self.df_full_run = self.esg.full_run_to_pandas(dt_out=1, max_t=10)
+        self.df_full_run = self.esg.run_multistep_to_pandas(dt_out=1, max_t=10)
        
 
-        mean_ = self.df_full_run[['r']].groupby('time').mean().values
+        mean_ = self.df_full_run[['r']].groupby('sim').mean().values
         ref_mean = np.array([B_fc(t) for t in range(1, 11)])
         self.assertTrue(np.allclose(mean_.T, ref_mean, rtol=0.1))
         
@@ -175,7 +175,7 @@ class hw1f_stat_test_short_rate(unittest.TestCase):
         b = lambda t: 0.1 #derivative of B_fc
         r = HullWhite1fShortRate(B=B, a=a, sigma=sigma, dW=self.dW)
         self.esg = ESG(dt_sim=self.delta_t, dW=self.dW, B=B, r=r)
-        df_full_run = self.esg.full_run_to_pandas(dt_out=1, max_t=T)['r']
+        df_full_run = self.esg.run_multistep_to_pandas(dt_out=1, max_t=T)['r']
         
         #theoretical_mu = np.exp(-a*T)*r_zero+b(T)/a*(1-np.exp(-a*T))
         theoretical_mu = B_fc(T)
