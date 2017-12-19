@@ -19,7 +19,7 @@ def esg_e_sr_bonds_cash(delta_t, sims, rho, bond_prices, hw_a = 0.001, hw_sigma 
 #    assert bond_prices.shape[1]==1
     rho = 0.2
     corr = [[1, rho], [rho, 1]]
-    C = np.diag([delta_t, delta_t])
+    C = np.diag([np.sqrt(delta_t), np.sqrt(delta_t)])
     cov = C*corr*C.T 
     dW = rng.NormalRng(dims=2, sims=sims, mean=[0, 0], cov=cov)
     B_fc = hw1f_B_function(bond_prices=bond_prices, a=hw_a, sigma=hw_sigma)
