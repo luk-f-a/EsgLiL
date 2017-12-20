@@ -115,8 +115,8 @@ class Model(ModelLoop):
                     if hasattr(self.eq[model], 'run_multistep_to_pandas'):
                         mstep_fc = self.eq[model].run_multistep_to_pandas
                         m_df = mstep_fc(dt_out, max_t=t, out_vars=out_vars)
-                        m_df = m_df.rename(columns={orig:model+'_'+orig 
-                                             for orig in m_df.columns})
+                        m_df = m_df.rename(index={orig:model+'_'+orig 
+                                             for orig in m_df.index.get_level_values('model')})
                         out.append(m_df)
                         
         df = pd.concat(out, axis=0)
@@ -143,10 +143,16 @@ class Model(ModelLoop):
                 else:
                     if (out_vars is None) or (model in out_vars):
                         value_dict.update(value_to_dictionary(model, model_val))
-        df = pd.DataFrame(value_dict).assign(time=self.clock)
+        df = pd.DataFrame.from_dict(value_dict).assign(time=self.clock)
         df.index.names = ['sim']
+        df.columns.names = ['model']
         df = df.set_index(['time'], append=True)
-        df = pd.concat([df]+df_list)
+        df = df.unstack('time')
+        df = pd.concat([df]+df_list, axis=1)
+        
+        #df = df.stack()
+        if isinstance(df, pd.Series):
+            df = df.to_frame()
         return df
         
     
