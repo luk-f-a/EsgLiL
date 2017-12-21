@@ -93,12 +93,11 @@ class NormalRng(Rng):
     
 class WienerProcess(SDE):
     """class for accumulating Wiener increments into a running sum
-    
   
      Parameters
     ----------
 
-     None
+    dW: random number generator of Wiener increments
     """    
     __slots__ = ('dW')
     
@@ -106,7 +105,36 @@ class WienerProcess(SDE):
         self.value_t = 0
         self.dW = dW
 
-
     def run_step(self, t):
         self.value_t = self.dW + self.value_t
+   
+class CorrelatedRV(SDE):
+    """class for correlating independent variables
+  
+     Parameters
+    ----------
+
+     cov: covariance matrix
+     rng: random number generator for independent variables with variance = 1
+    """
+    __slots__ = ('rng', 'cov')
+                 
+    def __init__(self,  rng, input_cov, target_cov):
+        """covar calculations
+        target_cov = L.L'  (L is cholesky)
+        X: independent dW
+        Z: dependednt dW
+        to obtain E[ZZ']= target_cov then
+        Z=MX where M=L@[[sigma^-1, 0],[0, sigma^-1]]
+        and sigma=sqrt(delta_t)
+        """
+        self.rng = rng
+        l = np.linalg.cholesky(target_cov)
+        inverse_sqrt_input_cov = np.diag(np.reciprocal(np.sqrt(np.diag(input_cov))))
+        self.m = l@inverse_sqrt_input_cov
+        
+    def run_step(self, t):
+        self.value_t = self.m@self.rng()
+
+    
    
