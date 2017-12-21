@@ -28,7 +28,12 @@ class Variable(object):
     def __mul__(self, other):
         return self.value_t * other
     
-    
+    def __matmul__(self, other):
+        if isinstance(other, Variable):
+            return self.value_t @ other.value_t
+        else:
+            return self.value_t @ other
+        
     def __truediv__(self, other):
         return self.value_t / other
         
@@ -54,11 +59,20 @@ class Variable(object):
             return other / self.value_t        
         
     def __rmul__(self, other):
-        return other  * self.value_t
+        if isinstance(other, Variable):
+            return other.value_t * self.value_t
+        else:
+            return other * self.value_t
+    
+    def __rmatmul__(self, other):
+        if isinstance(other, Variable):
+            return other.value_t @ self.value_t
+        else:
+            return other @ self.value_t
     
     def __getitem__(self, key):
         return VariableView(self, key)
-
+    
     def __call__(self):
         """ideally should only be used for debugging
         """
