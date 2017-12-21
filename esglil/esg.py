@@ -21,6 +21,7 @@ Created on Wed Dec  6 22:21:54 2017
 from fractions import Fraction
 import numpy as np
 import pandas as pd
+from itertools import repeat
 
 class ModelLoop(object):
     __slots = ['eq', 'clock', 'dt_sim']    
@@ -94,7 +95,7 @@ class Model(ModelLoop):
             if ts % float(dt_out/self.dt_sim) == 0:
                 out.append(self.df_value_t(out_vars))
 
-        df = pd.concat(out, axis=0)
+        df = pd.concat(out, axis=1)
         return df
     
     def _dense_run_to_pandas(self, dt_out, max_t, out_vars=None):
@@ -115,11 +116,11 @@ class Model(ModelLoop):
                     if hasattr(self.eq[model], 'run_multistep_to_pandas'):
                         mstep_fc = self.eq[model].run_multistep_to_pandas
                         m_df = mstep_fc(dt_out, max_t=t, out_vars=out_vars)
-                        m_df = m_df.rename(index={orig:model+'_'+orig 
-                                             for orig in m_df.index.get_level_values('model')})
+#                        m_df = m_df.rename(index={orig:model+'_'+orig 
+#                                             for orig in m_df.index.get_level_values('model')})
                         out.append(m_df)
                         
-        df = pd.concat(out, axis=0)
+        df = pd.concat(out, axis=1)
         return df
 
     def df_value_t(self, out_vars):
@@ -137,22 +138,29 @@ class Model(ModelLoop):
                     for sub_output in model_val:
                         if (out_vars is None) or (sub_output in out_vars):
                             val = model_val[sub_output]
-                            key_name = model+'_'+sub_output
+                            #key_name = model+'_'+sub_output
+                            key_name = sub_output
                             v_d = value_to_dictionary(key_name, val)
                             value_dict.update(v_d)
                 else:
                     if (out_vars is None) or (model in out_vars):
                         value_dict.update(value_to_dictionary(model, model_val))
-        df = pd.DataFrame.from_dict(value_dict).assign(time=self.clock)
-        df.index.names = ['sim']
-        df.columns.names = ['model']
-        df = df.set_index(['time'], append=True)
-        df = df.unstack('time')
-        df = pd.concat([df]+df_list, axis=1)
-        
+#        df = pd.DataFrame.from_dict(value_dict).assign(time=self.clock)
+#        df.index.names = ['sim']
+#        df.columns.names = ['model']
+#        df = df.set_index(['time'], append=True)
+#        df = df.unstack('time')
+#        df = pd.concat([df]+df_list, axis=1)
+#        
         #df = df.stack()
-        if isinstance(df, pd.Series):
-            df = df.to_frame()
+#        if isinstance(df, pd.Series):
+#            df = df.to_frame()
+
+        df = pd.DataFrame.from_dict(value_dict)
+        tuples = list(zip(df.columns, repeat(self.clock)))
+        index = pd.MultiIndex.from_tuples(tuples, names=['model', 'time'])
+        df.columns = index
+        df.index.names = ['sim']
         return df
         
     
