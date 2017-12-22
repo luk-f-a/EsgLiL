@@ -146,6 +146,13 @@ class VariableView(object):
         """
         return self.variable.value_t[self.key,...]
     
+    @property
+    def shape(self):
+        if hasattr(self.variable, 'shape'):
+            return self.variable.shape[1:]
+        else:
+            return None
+        
 def _check_interface(obj):
     for attr in Variable:
         assert hasattr(obj, attr) 

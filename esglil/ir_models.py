@@ -10,6 +10,7 @@ import numpy as np
 from scipy.interpolate import make_interp_spline
 from esglil.common import SDE
 import xarray as xr
+from import collections import Iterable
 
 def hw1f_sigma_calibration(bond_prices, swaption_prices, a):
     """Based on zero coupon bond and swaption prices, it will return 
@@ -301,8 +302,16 @@ class HullWhite1fBondPrice(SDE):
         self.r = r
         self.value_t = P_0
         self.t_1 = 0
-        #self._check_valid_params()
+        self._check_valid_params()
 
+    def _check_valid_params(self):
+        if isinstance(self.T, Iterable):
+            assert isinstance(self.value_t, Iterable)
+            assert len(self.T.shape) == len(self.dW.shape)+1, (
+                    "T must have one more dimeneions than dW")
+            assert len(self.value_t.shape) == len(self.dW.shape)+1
+            assert len(self.value_t.shape) == len(self.value_t.shape)
+        
     def run_step(self, t):
         self.value_t = self.value_t * (1 + self.r*(t-self.t_1)
                                  +self.sigma/self.a*(1-np.exp(-self.a*(self.T-t)))*(self.dW*1))      

@@ -8,6 +8,7 @@ Created on Sun Sep 24 17:27:12 2017
 import numpy as np
 from esglil.common import Variable
 from esglil.common import SDE
+from import collections import Iterable
 
 class Rng(Variable):
     """Base class for random number generators
@@ -16,6 +17,10 @@ class Rng(Variable):
 
     def __init__(self, dims, sims):
         self.sims = sims
+        if isinstance(sims, iterable):
+            self.shape = [dims]+[s for s in sims]
+        else:
+            self.shape = [dims, sims]
         #self.value_t = np.zeros(shape=(dims, sims))
                 
     def run_step(self, t):
