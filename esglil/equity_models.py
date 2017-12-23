@@ -25,7 +25,7 @@ class GeometricBrownianMotion(SDE):
     delta_t : scalar
         
     """
-    __slots__ = ('mu', 'sigma')   
+    __slots__ = ('mu', 'sigma', 'dW')   
     
     def __init__(self, mu, sigma, dW, s_zero=100):
         self.mu = mu

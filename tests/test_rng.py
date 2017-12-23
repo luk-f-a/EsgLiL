@@ -73,8 +73,34 @@ class Normal_Rng_test(unittest.TestCase):
         self.assertTrue(np.allclose(np.diag(corr,5), 0.7*np.ones(5)))
         self.assertTrue(np.allclose(np.diag(corr,-5), 0.7*np.ones(5)))
         
-
+class MCMV_Normal_Rng_test(unittest.TestCase):
+    """Test uniform rng with numpy output
+    """
+    def setUp(self):
+        self.rng = rng.MCMVNormalRng(dims=2, sims_outer=50000, sims_inner=100,
+                                     mean=[0,0], cov=np.eye(2,2), mcmv_time=1)
+        cov = np.array([[1,0.7],[0.7,1]])
+        self.corr_norm =  rng.CorrelatedRV(rng=self.rng, input_cov=np.eye(2,2),
+                                           target_cov=cov)
+        self.esg = ESG(dt_sim=1/2, ind_dW=self.rng, dW=self.corr_norm)
         
+    def test_sims(self):
+        #_before_mcmv_time
+        cf = self.esg.run_multistep_to_pandas(dt_out=1/2, max_t=2, 
+                                  out_vars=['ind_dW'])
+        shape = cf.xs('ind_dW_0', level='model', axis=1)[0.5].unique().shape
+        self.assertEqual(shape[0], self.rng.sims_outer)
+
+        #after_mcmv_time
+        shape = cf.xs('ind_dW_0', level='model', axis=1)[1.5].unique().shape
+        self.assertEqual(shape[0], self.rng.sims_outer*self.rng.sims_inner)
+        
+        #test_mean
+        mean = cf.xs('ind_dW_0', level='model', axis=1).mean()
+        self.assertTrue(np.allclose(mean, 0, atol=0.01))
+        
+        #np.tile(np.arange(1,6),2).reshape(2,5)
+
 if __name__ == '__main__':
     unittest.main()              
             

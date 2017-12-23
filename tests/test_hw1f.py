@@ -101,7 +101,7 @@ class hw1f_leakage_tests(unittest.TestCase):
         C = HullWhite1fCashAccount(r=r)
         self.esg = ESG(dt_sim=delta_t, dW=dW, B=B, r=r, cash=C, **P)
             
-    def test_bond_prices(self):
+    def test_cash_to_initial_bond_prices(self):
         """Test that starting bond prices can be recovered
         """
         

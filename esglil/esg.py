@@ -23,8 +23,8 @@ import numpy as np
 import pandas as pd
 from itertools import repeat
 
-class ModelLoop(object):
-    __slots = ['eq', 'clock', 'dt_sim']    
+class Model(object):
+    __slots = ['eq', 'clock', 'dt_sim', 'is_model_loop']    
     def __init__(self, dt_sim, **models):
         self.eq = models
         self.clock = 0
@@ -55,12 +55,40 @@ class ModelLoop(object):
                 out[model] = model_out
         return out
 
+    def _replace_links(self, name, old_object, new_object):
+        for model in self.eq:
+            if isinstance(model, Model):
+                model[name] = new_object
+            else:
+                model._replace_links(name, old_object, new_object)
+                
     def __getitem__(self, key):
-        return self.eq[key]
+        try:
+            out = self.eq[key]
+        except:
+            out = None
+            for m in self.eq:
+                if hasattr(m, 'is_model_loop'):
+                    try:
+                        out = m[key]
+                    except:
+                        pass
+            if out is None:
+                raise KeyError
+        return out
 
+    def __setitem__(self, key, item):
+        """ replace one element in the computational tree and including 
+        rebuilding the edges to all dependent objects
+        """
+        old_object = self.__getitem__(key)
+        for model in self.eq:
+            if model == key:
+                self.eq[model] = item
+            else:
+                self.eq[model]._replace_links(key, old_object, item)
+            
     
-class Model(ModelLoop):
-
     def full_run(self, dt_out, max_t):
         dt_out = Fraction(dt_out)
         assert float(dt_out/self.dt_sim) % 1 == 0

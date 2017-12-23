@@ -6,7 +6,13 @@ Created on Wed Dec  6 22:16:19 2017
 @author: luk-f-a
 """
 
+class ValueDict(dict):
+    def __getitem__(self, key):
+        val = dict.__getitem__(self, key[0])
+        return val
+    
 class Variable(object):
+    __slots__ = []
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         if inputs[1] is self:
             return ufunc(inputs[0], inputs[1].value_t)
@@ -146,12 +152,17 @@ class VariableView(object):
         """
         return self.variable.value_t[self.key,...]
     
+    def _replace_variable(self, old_object, new_object):
+        if self.variable is old_object:
+            self.variable = new_object
+        
     @property
     def shape(self):
         if hasattr(self.variable, 'shape'):
             return self.variable.shape[1:]
         else:
             return None
+    
         
 def _check_interface(obj):
     for attr in Variable:
@@ -171,11 +182,20 @@ class SDE(Variable):
         """
         raise NotImplementedError
         
-#    def __call__(self):
-#        return self.value_t
+    def _replace_links(self, name, old_object, new_object):
+        for item in self.__slots__:
+            obj = getattr(self, item)
+            if obj is old_object:
+                setattr(self, item, new_object)
+            elif isinstance(obj, VariableView):
+                obj._replace_variable(old_object, new_object)
+
+                
+    def __call__(self):
+        return self.value_t
     
 class TimeDependentParameter(Variable):
-    __slots__ = ('f')
+    __slots__ = ('f', 'value_t')
      
     def __init__(self, function):
         self.f = function 
@@ -186,6 +206,9 @@ class TimeDependentParameter(Variable):
         
     def __call__(self, t):
         return self.f(t)
+    
+    def _replace_links(self, name, old_object, new_object):
+        pass
 
 #class ConstantParameter(Variable):
 #    __slots__ = ('out')

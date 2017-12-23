@@ -10,7 +10,7 @@ import numpy as np
 from scipy.interpolate import make_interp_spline
 from esglil.common import SDE
 import xarray as xr
-from import collections import Iterable
+from collections import Iterable
 
 def hw1f_sigma_calibration(bond_prices, swaption_prices, a):
     """Based on zero coupon bond and swaption prices, it will return 
@@ -292,7 +292,7 @@ class HullWhite1fBondPrice(SDE):
     T: scalar or numpy array
         Bond maturity        
     """    
-    __slots__ = ('T', 'a', 'sigma', 'P_0', 'r', 'dW')
+    __slots__ = ('T', 'a', 'sigma', 'r', 'dW')
     
     def __init__(self, B, a, sigma, r, dW, P_0, T):
         self.T = T
@@ -339,7 +339,7 @@ class HullWhite1fCashAccount(SDE):
     T: scalar or numpy array
         Bond maturity        
     """    
-    __slots__ = ('r', 'dW')
+    __slots__ = ('r')
     
     def __init__(self, r):
         self.r = r
@@ -348,8 +348,8 @@ class HullWhite1fCashAccount(SDE):
         #self._check_valid_params()
 
     def run_step(self, t):
-#        self.value_t = self.value_t * np.exp(self.r*(t-self.t_1))
-        self.value_t = self.value_t*np.exp(self.r*(t-self.t_1))
+        #self.value_t = self.value_t*np.exp(self.r*(t-self.t_1))
+        self.value_t = self.value_t*(1+self.r*(t-self.t_1))
         self.t_1 = t
 
  
