@@ -185,7 +185,7 @@ def _bond_dict_to_xr(dict_):
     return xr.DataArray(list(dict_.values()), dims=['maturity'],
                                  coords=[list(dict_.keys())])
 
-def hw1f_B_function(bond_prices, a, sigma):
+def hw1f_B_function(bond_prices, a, sigma, return_p_and_f=False):
     """Based on zero coupon bond prices, it will return a function B(t) 
     which is the integral between 0 and T of parameter b(t) in 
     the hw1f model dr(t)=[b(t)-a*r(t)]dt+sigma*dW(t)    
@@ -196,15 +196,25 @@ def hw1f_B_function(bond_prices, a, sigma):
         initial bond prices to be moved forward in time. If passing a 
         dictionary it should be {maturity: price}, if passing a DataArray
         it should contain a dimension 'maturity' with the prices as values
+        
+    a: scalar 
+        mean reversion speed
+    
+    sigma : scalar
+        standard deviation
+    
+    return_p_and_f: boolean
+        whether the bond price function (interpolating the input data) 
+        and the instantaneous forward rate function will be returned. These
+        are both necessar in some formulas of HW bond prices
 
     Returns
     ----------
     B(t) : function
         integral of b(s) between 0 and t
     
-    r_zero: scalar
-        initial value of the short rate. Formally f(0,0) where r(t, T) is the
-        instantaneous forward rate at time t for a maturity of T
+    f(0,t): function
+        instantaneous forward rate for maturity t, 
         
     """
     
@@ -226,7 +236,11 @@ def hw1f_B_function(bond_prices, a, sigma):
     b_spline = make_interp_spline(abscisas, ytm_t)
     f = lambda t: b_spline(t)+t*b_spline.derivative()(t)
     B = lambda t: f(t)+ sigma**2/(2*a**2)*(1-np.exp(-a*t))**2
-    return B
+    if return_p_and_f:
+        P = lambda t: np.exp(-t*b_spline(t))
+        return B, f, P
+    else:
+        return B
 
 class HullWhite1fShortRate(SDE):
     """class for (1 Factor) Hull White model of short interest rate
@@ -272,13 +286,14 @@ class HullWhite1fShortRate(SDE):
         self.t_1 = t
     
 
-class HullWhite1fBondPrice(SDE):
+class HullWhite1fBondPrice_WC(SDE):
     """class for (1 Factor) Hull White model of short interest rate
     This class implements the bond prices for maturity T
     SDE: dP(t, T)/P(t,T) = r(t)*dt + sigma/a*(1-exp(-a*(T-t)))*dW
-         
+        
     for the Hull White model dr(t)=[b(t)-a*r(t)]dt+sigma*dW(t)
 
+    using a weak convergence scheme. There is no path-convergence!!
    
      Parameters
     ----------
@@ -294,7 +309,7 @@ class HullWhite1fBondPrice(SDE):
     """    
     __slots__ = ('T', 'a', 'sigma', 'r', 'dW')
     
-    def __init__(self, B, a, sigma, r, dW, P_0, T):
+    def __init__(self, a, sigma, r, dW, P_0, T):
         self.T = T
         self.a = a
         self.sigma = sigma
@@ -318,7 +333,60 @@ class HullWhite1fBondPrice(SDE):
 
         self.t_1 = t
         
+class HullWhite1fBondPrice(SDE):
+    """class for (1 Factor) Hull White model of short interest rate
+    This class implements the bond prices for maturity T
+    P(t, T) = exp[-C(t,T)*r(t) + A(t,T)]
+         
+    for the Hull White model dr(t)=[b(t)-a*r(t)]dt+sigma*dW(t)
+
+    with 
     
+    C(t,T)=1/a*(1-exp(-a(T-t)))
+    
+    A(t,T)=ln(Pm(0,T)/Pm(0,t))+fm(0,t)*C(t,T)-sigma^2/4a*(1-exp(-2at))*C(t,T)^2
+   
+     Parameters
+    ----------
+
+    a: scalar
+        mean reversion speed
+    
+    sigma : scalar
+        standard deviation
+
+    T: scalar or array
+        Bond maturity
+        
+    fm(0,t): function
+        instantaneous forward rate at time 0 observed (market) and interpolated
+    
+    Pm(0,T): function
+        bond prices at time 0 observed (market) and interpolated
+    
+    """    
+    __slots__ = ('T', 'a', 'sigma', 'r', 'f', 'P_0')
+    
+    def __init__(self, a, sigma, r, P_0, f, T):
+        self.T = T
+        self.a = a
+        self.sigma = sigma
+        self.r = r
+        self.value_t = P_0(T)
+        self.P_0 = P_0
+        self.f = f
+        self.t_1 = 0
+#        self._check_valid_params()
+
+        
+    def run_step(self, t):
+        C = 1/self.a*(1-np.exp(-self.a*(self.T-t)))
+        A = (np.log(self.P_0(self.T)/self.P_0(t))
+            +self.f(t)*C
+            -self.sigma**2/4/self.a*(1-np.exp(-2*self.a*t))*C**2)
+        self.value_t = np.exp(-C*self.r+A)
+        self.t_1 = t
+        
 class HullWhite1fCashAccount(SDE):
     """class for (1 Factor) Hull White model of short interest rate
     This class implements the cash account
@@ -348,7 +416,10 @@ class HullWhite1fCashAccount(SDE):
         #self._check_valid_params()
 
     def run_step(self, t):
-        #self.value_t = self.value_t*np.exp(self.r*(t-self.t_1))
+        #this version '*(1+rdt)' definitely works better than 
+        #exponential capitalization '*exp(rdt)
+        #with larger differences for smaller time deltas (which suggests
+        #that it's the exponential which is wrong)
         self.value_t = self.value_t*(1+self.r*(t-self.t_1))
         self.t_1 = t
 

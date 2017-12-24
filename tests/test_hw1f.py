@@ -47,6 +47,43 @@ class hw1f_test_short_rate(unittest.TestCase):
 class hw1f_leakage_tests(unittest.TestCase):    
     def setUp(self):
 
+        bond_rate = 0.02
+        bond_prices = {i:(1+bond_rate)**(-i) for i in range(1,15)}        
+        a = 0.01
+        sigma = 0.01
+
+        B,f, p =  ir_models.hw1f_B_function(bond_prices, a, sigma,
+                                       return_p_and_f=True)
+        delta_t = 1/50
+        dW = rng.NormalRng(dims=1, sims=10000, mean=[0], cov=[[delta_t]])
+        B = TimeDependentParameter(function=B)
+        r = HullWhite1fShortRate(B=B, a=a, sigma=sigma, dW=dW)
+        #T = np.array(list(bond_prices.keys()))
+        P = {'Bond_{}'.format(i):HullWhite1fBondPrice(a=a, r=r, sigma=sigma, 
+                                 P_0=p,f=f, T=i) for i in range(1,41)}
+        C = HullWhite1fCashAccount(r=r)
+        self.esg = ESG(dt_sim=delta_t, dW=dW, B=B, r=r, cash=C, **P)
+            
+    def test_cash_to_initial_bond_prices(self):
+        """Test that starting bond prices can be recovered
+            Each bond is tested at every time step and its implied rate is calculated
+            no difference larger than 10bps is allowed
+        """
+        
+        df_sims = self.esg.run_multistep_to_pandas(dt_out=1, max_t=40)
+        stck_df_sims = df_sims.stack('time')
+        means = stck_df_sims.div(stck_df_sims['cash'], axis='index').groupby('time').mean()
+        del means['r']
+        del means['B']
+        del means['cash']
+        del means['dW']
+        rates = np.concatenate([means['Bond_'+str(i)].values**(-1/i)-1 for i in range(1,41)])
+        self.assertTrue(np.allclose(rates, 0.02, atol=0.001))
+        
+        
+class hw1f_sigma_calibration_tests(unittest.TestCase):    
+    def setUp(self):
+
         
         self.bond_prices = {1: 1.0073, 2: 1.0111, 3: 1.0136, 4: 1.0138, 5: 1.0115, 6: 1.0072,
               7: 1.0013, 8: 0.9941, 9: 0.9852, 10: 0.9751, 11: 0.9669, 12: 0.9562,
@@ -119,7 +156,8 @@ class hw1f_leakage_tests(unittest.TestCase):
         errors = mc_bond_prices.values / pd.DataFrame.from_dict(self.bond_prices, orient='index').values -1 
         self.assertTrue(np.all(np.less(np.abs(errors), 0.01)))
 
-        
+      #TODO: check sigmas (how? the match is not perfect to real market data)  
+      
 class hw1f_stat_test_short_rate(unittest.TestCase):            
     def setUp(self):
        

@@ -50,14 +50,14 @@ def esg_e_sr_bonds_cash_test(delta_t, sims, rho, bond_prices, hw_a = 0.001, hw_s
     indep_cov = np.diag([delta_t, delta_t])
     ind_dW = rng.NormalRng(dims=2, sims=sims, mean=[0, 0], cov=indep_cov)
     dW = rng.CorrelatedRV(rng=ind_dW, input_cov=indep_cov , target_cov=dep_cov)
-    B_fc = hw1f_B_function(bond_prices=bond_prices, a=hw_a, sigma=hw_sigma)
+    B_fc, f, p0 = hw1f_B_function(bond_prices=bond_prices, a=hw_a, sigma=hw_sigma,
+                           return_p_and_f=True)
     B = TimeDependentParameter(B_fc)
     r = HullWhite1fShortRate(B=B, a=hw_a, sigma=hw_sigma, dW=dW[0])
     
-    P_0 = np.array(list(bond_prices.values())).reshape(-1,1)
     T = np.array(list(bond_prices.keys())).reshape(-1,1)
-    P = HullWhite1fBondPrice(B=B, a=hw_a, r=r, sigma=hw_sigma, dW=dW[0], 
-                             P_0=P_0, T=T)
+    P = HullWhite1fBondPrice(a=hw_a, r=r, sigma=hw_sigma,  
+                             P_0=p0, f=f, T=T)
     C = HullWhite1fCashAccount(r=r)
     W = rng.WienerProcess(dW)
     #S = GeometricBrownianMotion(mu=r, sigma=gbm_sigma, dW=dW[1])

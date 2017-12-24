@@ -22,6 +22,7 @@ from fractions import Fraction
 import numpy as np
 import pandas as pd
 from itertools import repeat
+from common import SDE
 
 class Model(object):
     __slots = ['eq', 'clock', 'dt_sim', 'is_model_loop']    
@@ -56,10 +57,11 @@ class Model(object):
         return out
 
     def _replace_links(self, name, old_object, new_object):
-        for model in self.eq:
+        for m in self.eq:
+            model = self.eq[m]
             if isinstance(model, Model):
                 model[name] = new_object
-            else:
+            elif isinstance(model, SDE):
                 model._replace_links(name, old_object, new_object)
                 
     def __getitem__(self, key):
@@ -68,9 +70,10 @@ class Model(object):
         except:
             out = None
             for m in self.eq:
-                if hasattr(m, 'is_model_loop'):
+                model = self.eq[m]
+                if isinstance(model, Model):
                     try:
-                        out = m[key]
+                        out = model[key]
                     except:
                         pass
             if out is None:
@@ -82,11 +85,16 @@ class Model(object):
         rebuilding the edges to all dependent objects
         """
         old_object = self.__getitem__(key)
-        for model in self.eq:
-            if model == key:
-                self.eq[model] = item
+        for m_name in self.eq:
+            if m_name == key:
+                self.eq[m_name] = item
             else:
-                self.eq[model]._replace_links(key, old_object, item)
+                model = self.eq[m_name]
+                if isinstance(model, Model):
+                    model[key] = item
+                elif isinstance(model, SDE):
+                    model._replace_links(key, old_object, item)                
+                
             
     
     def full_run(self, dt_out, max_t):

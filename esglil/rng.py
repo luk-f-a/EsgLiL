@@ -185,7 +185,7 @@ class WienerProcess(SDE):
 
     dW: random number generator of Wiener increments
     """    
-    __slots__ = ('dW')
+    __slots__ = ['dW']
     
     def __init__(self, dW):
         self.value_t = 0
@@ -220,7 +220,10 @@ class CorrelatedRV(SDE):
         self.m = l@inverse_sqrt_input_cov
         
     def run_step(self, t):
-        self.value_t = self.m@self.rng()
+        try:
+            self.value_t = self.m@self.rng()
+        except:
+            print('a')
 
     
    

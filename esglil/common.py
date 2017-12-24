@@ -184,6 +184,8 @@ class SDE(Variable):
         
     def _replace_links(self, name, old_object, new_object):
         for item in self.__slots__:
+            if not hasattr(self, item):
+                continue
             obj = getattr(self, item)
             if obj is old_object:
                 setattr(self, item, new_object)
