@@ -100,7 +100,58 @@ class NormalRng(Rng):
                                                check_valid='raise').T
 #        print(out.squeeze()[:2])
         return out.squeeze()
+
  
+class IndependentWienerIncrements(Rng):
+    """class for normal random number generation
+
+     Parameters
+    ----------
+    dims: int
+        Amount of dimensions in for the output normal variable
+    
+    sims : int
+        Amount of simulations to produce in each timestep
+        
+    mean : 1-D array_like, of length N
+        Mean of the N-dimensional distribution.
+        
+    cov : 2-D array_like, of shape (N, N)
+        Covariance matrix of the distribution. 
+        It must be symmetric and positive-semidefinite for proper sampling.
+    """
+    __slots__ = ('mean', 'delta_t', 'library')
+                 
+    def __init__(self,  dims, sims, mean=0, delta_t=1, distributed=False):
+        Rng.__init__(self, dims, sims)
+        self.mean = mean
+        self.delta_t = delta_t
+        if distributed:
+            import dask.array as da
+            self.library = da
+        else:
+            self.library = np
+        
+    def _check_valid_params(self):
+        #TODO: if output is numpy, mean must be size 1 and cov 1x1
+        # if output is xr size of mean and cov must agree with svar dim
+        pass
+    
+    
+    def generate(self):
+        """Return the next iteration of the random number generator
+        """
+        self._check_valid_params()
+        kwargs = {}
+        if not self.library is np:
+            kwargs['chunks'] = int(self.sims/4)
+        out = self.library.random.normal(self.mean, 
+                                         self.delta_t, 
+                                         size=(self.dims, self.sims), **kwargs )
+#        print(out.squeeze()[:2])
+        return out.squeeze()
+
+
     
 class MCMVNormalRng(Rng):
     """class for normal random number generation with 
@@ -220,10 +271,11 @@ class CorrelatedRV(SDE):
         self.m = l@inverse_sqrt_input_cov
         
     def run_step(self, t):
-        try:
+        if hasattr(self.rng(), 'compute'):
+            import dask.array as da
+            self.value_t = da.from_array(self.m, chunks=1000)@self.rng()            
+        else:
             self.value_t = self.m@self.rng()
-        except:
-            print('a')
-
+        
     
    

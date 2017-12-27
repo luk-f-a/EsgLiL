@@ -22,7 +22,7 @@ from fractions import Fraction
 import numpy as np
 import pandas as pd
 from itertools import repeat
-from common import SDE
+from esglil.common import SDE
 
 class Model(object):
     __slots = ['eq', 'clock', 'dt_sim', 'is_model_loop']    
