@@ -94,8 +94,9 @@ def esg_equity2(delta_t, sims, r=0.03, gbm_sigma=0.2):
     S = GeometricBrownianMotion(mu=r, sigma=gbm_sigma, dW=dW[1])
     cash = DeterministicBankAccount(r)
     esg = ESG(dt_sim=delta_t, ind_dW=ind_dW, dW=dW, W=W, dW1d=dW1d, S=S, cash=cash)
-    
     return esg
+
+
 
 def esg_equity_exact(delta_t, sims, r=0.03, gbm_sigma=0.2):
     dW = rng.NormalRng(dims=1, sims=sims, mean=[0], cov=[[float(delta_t)]])
