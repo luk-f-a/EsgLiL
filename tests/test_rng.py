@@ -34,16 +34,16 @@ class Uniform_Rng_test_np(unittest.TestCase):
 
 class Wiener_test(unittest.TestCase):
     def setUp(self):
-        delta_t = 0.1
-        dW = rng.NormalRng(dims=1, sims=10, mean=[0], cov=[[delta_t]])
+        self.delta_t = 0.1
+        dW = rng.NormalRng(dims=1, sims=10, mean=[0], cov=[[self.delta_t]])
         W = rng.WienerProcess(dW=dW)
-        self.esg = ESG(dt_sim=delta_t, dW=dW, W=W)
+        self.esg = ESG(dt_sim=self.delta_t, dW=dW, W=W)
             
     def test_returns_object(self):
         df_full_run = self.esg.run_multistep_to_pandas(dt_out=1, max_t=40)
         self.assertEqual(type(df_full_run), pd.DataFrame,
                          'incorrect type')
-        self.assertEqual(df_full_run.shape, (10, 2*40))
+        self.assertEqual(df_full_run.shape, (10, int(2*40/self.delta_t)))
          
 class Normal_Rng_test(unittest.TestCase):
     """Test uniform rng with numpy output

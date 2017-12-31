@@ -73,7 +73,8 @@ class test_MCMV_hw(unittest.TestCase):
         self.esg = ESG(dt_sim=self.delta_t, dW=dW, B=B,r=r, C=C, P=P, P_y10=P_y10)
         
     def test_bonds(self):
-        dW_new = rng.MCMVNormalRng(dims=2, sims_outer=5, sims_inner=10000,
+
+        dW_new = rng.MCMVNormalRng(dims=2, sims_outer=5, sims_inner=1000,
                                      mean=[0,0], 
                                      cov=[[self.delta_t,0],[0,self.delta_t]],
                                      mcmv_time=1)
@@ -85,6 +86,7 @@ class test_MCMV_hw(unittest.TestCase):
         tuples = list(zip(out, inn))
         index = pd.MultiIndex.from_tuples(tuples, names=['outer_sim', 'inner_sim'])
         df_full_run.index = index
+        resource.setrlimit(rsrc, (-1, -1))
         mean_cash = (1/df_full_run.xs('C', level='model', axis=1)).groupby(level='outer_sim').mean()
 
 
@@ -98,7 +100,7 @@ class test_MCMV_hw(unittest.TestCase):
         if not test:
             print(errors.abs().groupby(level='time').max())
         self.assertTrue(test)
-        
+        resource.setrlimit(rsrc, (8*1024**3, -1))        
         
     def test_1_bond(self):
         """
@@ -162,4 +164,7 @@ class test_MCMV_gbm(unittest.TestCase):
         print(mean_bond)
                 
 if __name__ == '__main__':
+    import resource
+    rsrc = resource.RLIMIT_AS
+    resource.setrlimit(rsrc, (8*1024**3, -1))
     unittest.main()    

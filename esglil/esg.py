@@ -25,10 +25,18 @@ from itertools import repeat
 from esglil.common import SDE
 
 class Model(object):
-    __slots = ['eq', 'clock', 'dt_sim', 'is_model_loop']    
+    """ Performs time loop on objects associated with it
+    clock measures the last time point equations (not Models) directly associated with this Model were run
+    dense clock measure the last time point other Models inside this model were run
+    The difference between them happens when the outside Model has a delta bigger than
+    the inner Model.
+    While time is passing inside the inside Model
+    """
+    __slots = ['eq', 'clock', 'dense_clock', 'dt_sim', 'is_model_loop']    
     def __init__(self, dt_sim, **models):
         self.eq = models
         self.clock = 0
+        self.dense_clock = 0
         self.dt_sim = float_to_fraction(dt_sim)
         for eq in models:
             if hasattr(eq, 'dt_sim'):
@@ -109,7 +117,7 @@ class Model(object):
         return out
     
         
-    def run_multistep_to_pandas(self, dt_out, max_t, out_vars=None):
+    def run_multistep_to_pandas_old(self, dt_out, max_t, out_vars=None):
         import pandas as pd
         dt_out = float_to_fraction(dt_out)
         assert max_t > float(self.clock)
@@ -120,7 +128,32 @@ class Model(object):
             assert dt_out % self.dt_sim == 0
             return self._sparse_run_to_pandas(dt_out, max_t, out_vars)
 
-    
+    def run_multistep_to_pandas(self, dt_out, max_t, out_vars=None):
+        import pandas as pd
+        dt_out = float_to_fraction(dt_out)
+        assert max_t > float(self.clock)
+        out = []
+        nb_steps = int(round(float((max_t-self.clock)/self.dt_sim),0))
+        for ts in range(1, nb_steps+1):
+            self.clock += self.dt_sim
+            for model in self.eq:
+                if isinstance(self.eq[model], Model):
+                    pd_out = self.eq[model].run_multistep_to_pandas(dt_out, 
+                           self.clock,
+                           out_vars=out_vars)
+                    out.append(pd_out)
+                else:
+                    self.eq[model].run_step(float(self.clock))
+            if dt_out <= self.dt_sim or ts % float(dt_out/self.dt_sim) == 0:        
+                out.append(self.df_value_t(out_vars))
+                
+
+        if out==[]:
+            print('problem')
+        else:
+            df = pd.concat(out, axis=1)
+        return df
+        
     def _sparse_run_to_pandas(self, dt_out, max_t, out_vars=None):
         """This method makes a run blah blah
         """
@@ -142,8 +175,10 @@ class Model(object):
         """
         out = []
         nb_steps = int(round(max_t/dt_out,0))
+
         for ts in range(1, nb_steps+1):
             t = ts*dt_out
+
             if t % self.dt_sim == 0:
                 self.run_step()
                 out.append(self.df_value_t(out_vars))
@@ -160,6 +195,45 @@ class Model(object):
         return df
 
     def df_value_t(self, out_vars):
+        import pandas as pd
+        value_dict = {}
+        df_list = []
+        for model in self.eq:
+            if isinstance(self.eq[model], Model):
+                continue
+            else:
+                model_val = self.eq[model].value_t
+                if isinstance(model_val, dict):
+                    for sub_output in model_val:
+                        if (out_vars is None) or (sub_output in out_vars):
+                            val = model_val[sub_output]
+                            #key_name = model+'_'+sub_output
+                            key_name = sub_output
+                            v_d = value_to_dictionary(key_name, val)
+                            value_dict.update(v_d)
+                else:
+                    if (out_vars is None) or (model in out_vars):
+                        value_dict.update(value_to_dictionary(model, model_val))
+#        df = pd.DataFrame.from_dict(value_dict).assign(time=self.clock)
+#        df.index.names = ['sim']
+#        df.columns.names = ['model']
+#        df = df.set_index(['time'], append=True)
+#        df = df.unstack('time')
+#        df = pd.concat([df]+df_list, axis=1)
+#        
+        #df = df.stack()
+#        if isinstance(df, pd.Series):
+#            df = df.to_frame()
+
+        df = pd.DataFrame.from_dict(value_dict)
+        tuples = list(zip(df.columns, repeat(self.clock)))
+        index = pd.MultiIndex.from_tuples(tuples, names=['model', 'time'])
+        df.columns = index
+        df.index.names = ['sim']
+        return df
+        
+    
+    def df_value_t_old(self, out_vars):
         import pandas as pd
         value_dict = {}
         df_list = []

@@ -32,9 +32,9 @@ class gbm_basic_test(unittest.TestCase):
         df_full_run = self.esg.run_multistep_to_pandas(dt_out=1, max_t=40)
         self.assertEqual(type(df_full_run), pd.DataFrame,
                          'incorrect type')
-        self.assertEqual(df_full_run.shape, (10*40, 2))
+        self.assertEqual(df_full_run.shape, (10, 2*40))
         ax=None
-        for sim, s in df_full_run[['S']].groupby(level='sim'):
+        for sim, s in df_full_run[['S']].stack().groupby(level='sim'):
             if ax is None:
                 ax = s.reset_index('sim')['S'].plot()
             else:
@@ -54,7 +54,7 @@ class gbm_leakage_test(unittest.TestCase):
     def test_mean(self):
         df_full_run = self.esg.run_multistep_to_pandas(dt_out=1, max_t=40)
         discounted_S = df_full_run['S']/df_full_run['cash']
-        mc_mean = discounted_S.groupby(level='time').mean().values
+        mc_mean = discounted_S.mean(axis=0).values
         ref_mean = 100*np.ones((1,40))
         errors = mc_mean/ref_mean-1
         if not np.all(np.less(np.abs(errors), 0.01)):
@@ -79,8 +79,7 @@ class gbm_statistical_test_stochastic_r(unittest.TestCase):
         
     def test_mean(self):
         df_full_run = self.esg.run_multistep_to_pandas(dt_out=1, max_t=40)
-        df_full_run['S/cash'] = df_full_run['S']/df_full_run['cash']
-        mc_mean = df_full_run['S/cash'].groupby('time').mean().values
+        mc_mean = (df_full_run['S']/df_full_run['cash']).mean(axis=0).values
         ref_mean = 100*np.ones((1,40))
         errors = mc_mean/ref_mean-1
         if not np.all(np.less(np.abs(errors), 0.01)):
@@ -107,9 +106,9 @@ class gbm_test_stochastic_int_rate(unittest.TestCase):
         #print(self.esg.df_value_t())
         self.assertEqual(type(df_full_run), pd.DataFrame,
                          'incorrect type')
-        self.assertEqual(df_full_run.shape, (10*40, 4))
+        self.assertEqual(df_full_run.shape, (10, 4*40))
         ax=None
-        for sim, s in df_full_run[['S']].groupby(level='sim'):
+        for sim, s in df_full_run[['S']].stack().groupby(level='sim'):
             if ax is None:
                 ax = s.reset_index('sim')['S'].plot()
             else:

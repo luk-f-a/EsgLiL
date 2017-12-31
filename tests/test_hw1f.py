@@ -36,9 +36,9 @@ class hw1f_test_short_rate(unittest.TestCase):
         df_full_run = self.esg.run_multistep_to_pandas(dt_out=1, max_t=40)
         self.assertEqual(type(df_full_run), pd.DataFrame,
                          'incorrect type')
-        self.assertEqual(df_full_run.shape, (10*40, 3))
+        self.assertEqual(df_full_run.shape, (10, 3*40))
         ax=None
-        for sim, r in df_full_run[['r']].groupby(level='sim'):
+        for sim, r in df_full_run[['r']].stack().groupby(level='sim'):
             if ax is None:
                 ax = r.reset_index('sim')['r'].plot()
             else:
@@ -55,7 +55,7 @@ class hw1f_leakage_tests(unittest.TestCase):
         B,f, p =  ir_models.hw1f_B_function(bond_prices, a, sigma,
                                        return_p_and_f=True)
         delta_t = 1/50
-        dW = rng.NormalRng(dims=1, sims=10000, mean=[0], cov=[[delta_t]])
+        dW = rng.NormalRng(dims=1, sims=50000, mean=[0], cov=[[delta_t]])
         B = TimeDependentParameter(function=B)
         r = HullWhite1fShortRate(B=B, a=a, sigma=sigma, dW=dW)
         #T = np.array(list(bond_prices.keys()))
@@ -77,8 +77,12 @@ class hw1f_leakage_tests(unittest.TestCase):
         del means['B']
         del means['cash']
         del means['dW']
-        rates = np.concatenate([means['Bond_'+str(i)].values**(-1/i)-1 for i in range(1,41)])
-        self.assertTrue(np.allclose(rates, 0.02, atol=0.001))
+        rates = np.stack([means['Bond_'+str(i)].values**(-1/i)-1 
+                                      for i in range(1,41)], axis=0)
+        self.assertTrue(np.allclose(rates.mean(), 0.02, atol=0.001))
+        self.assertTrue(np.allclose(rates.mean(axis=0), 0.02, atol=0.003))
+        self.assertTrue(np.allclose(rates.mean(axis=1), 0.02, atol=0.003))
+        self.assertTrue(np.allclose(rates, 0.02, atol=0.005))
         
         
 class hw1f_sigma_calibration_tests(unittest.TestCase):    
@@ -176,7 +180,7 @@ class hw1f_stat_test_short_rate(unittest.TestCase):
         self.df_full_run = self.esg.run_multistep_to_pandas(dt_out=1, max_t=10)
        
 
-        mean_ = self.df_full_run[['r']].groupby('time').mean().values
+        mean_ = self.df_full_run[['r']].mean(axis=0).values
         self.assertTrue(np.allclose(mean_, [mean_rev_level]*10, rtol=0.01))
 
     def test_fixed_mean_reversion2(self):
@@ -192,7 +196,7 @@ class hw1f_stat_test_short_rate(unittest.TestCase):
         self.df_full_run = self.esg.run_multistep_to_pandas(dt_out=1, max_t=10)
        
 
-        mean_ = self.df_full_run[['r']].groupby('sim').mean().values
+        mean_ = self.df_full_run[['r']].mean(axis=0).values
         ref_mean = np.array([B_fc(t) for t in range(1, 11)])
         self.assertTrue(np.allclose(mean_.T, ref_mean, rtol=0.1))
         
@@ -228,13 +232,14 @@ class hw1f_stat_test_short_rate(unittest.TestCase):
             print('Normality Test failed: p-value {}'.format(p1))
             res = False
         
-
-        a = float(df_full_run.groupby('time').mean().squeeze())
+        
+        a = float(df_full_run.mean(axis=0).squeeze())
         b = theoretical_mu        
+        
         if round(a, 3)!= round(b,3):   
             print('Fail:_Empirical mean {}, closed form mean {}'.format(a, b))            
             res = False
-        a = df_full_run.std()
+        a = df_full_run.std().values[0]
         b = theoretical_sigma
         if round(a, 3)!= round(b, 3):   
             a = float(df_full_run.std().squeeze())
