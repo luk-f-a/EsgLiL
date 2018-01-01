@@ -8,7 +8,7 @@ Created on Tue Nov  7 22:53:54 2017
 
 import numpy as np
 from scipy.interpolate import make_interp_spline
-from esglil.common import SDE
+from esglil.common import SDE, ValueDict
 import xarray as xr
 from collections import Iterable
 
@@ -381,11 +381,77 @@ class HullWhite1fBondPrice(SDE):
         
     def run_step(self, t):
         C = 1/self.a*(1-np.exp(-self.a*(self.T-t)))
+        
         A = (np.log(self.P_0(self.T)/self.P_0(t))
             +self.f(t)*C
             -self.sigma**2/4/self.a*(1-np.exp(-2*self.a*t))*C**2)
+        print(A.shape, C.shape, self.r.value_t.shape)
         self.value_t = np.exp(-C*self.r+A)
         self.t_1 = t
+
+class HullWhite1fConstantMaturityBondPrice(SDE):
+    """class for (1 Factor) Hull White model of short interest rate
+    This class implements the bond prices for time to maturity tau (instead of
+    maturity T as the HullWhite1fBondPrice).
+    The class is a more efficient (if slightly over-specialized) way of
+    tracking a bond portfolio without having to calculate the price of every
+    possible bond as the HullWhite1fBondPrice class does.
+    
+    P(t, T) = exp[-C(t,T)*r(t) + A(t,T)]
+    tau = T - t
+         
+    for the Hull White model dr(t)=[b(t)-a*r(t)]dt+sigma*dW(t)
+
+    with 
+    
+    C(t,T)=1/a*(1-exp(-a(T-t))) = 1/a*(1-exp(-a*tau)) = C(tau)
+    
+    A(t,T)=ln(Pm(0,T)/Pm(0,t))+fm(0,t)*C(t,T)-sigma^2/4a*(1-exp(-2at))*C(t,T)^2
+   
+     Parameters
+    ----------
+
+    a: scalar
+        mean reversion speed
+    
+    sigma : scalar
+        standard deviation
+
+    T: scalar or array
+        Bond maturity
+        
+    fm(0,t): function
+        instantaneous forward rate at time 0 observed (market) and interpolated
+    
+    Pm(0,T): function
+        bond prices at time 0 observed (market) and interpolated
+    
+    """    
+    __slots__ = ('tau', 'C', 'a', 'sigma', 'r', 'f', 'P_0')
+    
+    def __init__(self, a, sigma, r, P_0, f, tau):
+        self.tau = tau
+        self.a = a
+        self.sigma = sigma
+        self.r = r
+        self.value_t = ValueDict({float(t):P_0(t) for t in tau[:,0]})
+        self.P_0 = P_0
+        self.f = f
+        self.t_1 = 0
+        self.C = 1/self.a*(1-np.exp(-self.a*tau))
+#        self._check_valid_params()
+
+        
+    def run_step(self, t):
+        C = self.C
+        A = (np.log(self.P_0(self.tau+t)/self.P_0(t))
+            +self.f(t)*C
+            -self.sigma**2/4/self.a*(1-np.exp(-2*self.a*t))*C**2)
+        
+        self.value_t = ValueDict({float(t):bond for t, bond 
+                                    in zip(self.tau[:,0], np.exp(-C*self.r+A))})
+        self.t_1 = t
+
         
 class HullWhite1fCashAccount(SDE):
     """class for (1 Factor) Hull White model of short interest rate
