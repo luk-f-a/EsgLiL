@@ -61,7 +61,7 @@ class GBM_exact(SDE):
     delta_t : scalar
         
     """
-    __slots__ = ('mu', 'sigma', 'W')   
+    __slots__ = ('mu', 'sigma', 'W', 's_zero')   
     
     def __init__(self, mu, sigma, W, s_zero=100):
         self.mu = mu
