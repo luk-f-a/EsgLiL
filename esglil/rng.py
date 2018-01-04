@@ -278,4 +278,19 @@ class CorrelatedRV(SDE):
             self.value_t = self.m@self.rng()
         
     
-   
+class PreCalculatedFeed(SDE):
+    """class for feeding a precalculated stream (usually quadrature points 
+    for dW)
+    
+    points: 3-d array
+    """
+ 
+    __slots__ = ('points', 'col')
+                 
+    def __init__(self,  points):
+        self.points = points
+        self.col = 0
+        
+    def run_step(self, t):    
+        self.value_t = self.points[self.col, :,:]
+        self.col += 1

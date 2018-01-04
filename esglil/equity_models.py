@@ -74,4 +74,4 @@ class GBM_exact(SDE):
 
     def run_step(self, t):
         self.value_t = self.s_zero*np.exp((self.mu-0.5*self.sigma**2)*t+self.W*self.sigma)
-         
+        return self
