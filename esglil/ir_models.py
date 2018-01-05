@@ -385,7 +385,6 @@ class HullWhite1fBondPrice(SDE):
         A = (np.log(self.P_0(self.T)/self.P_0(t))
             +self.f(t)*C
             -self.sigma**2/4/self.a*(1-np.exp(-2*self.a*t))*C**2)
-        print(A.shape, C.shape, self.r.value_t.shape)
         self.value_t = np.exp(-C*self.r+A)
         self.t_1 = t
 
