@@ -102,7 +102,7 @@ class NormalRng(Rng):
         return out.squeeze()
 
  
-class IndependentWienerIncrements(Rng):
+class IndWienerIncr(Rng):
     """class for normal random number generation
 
      Parameters
@@ -120,17 +120,20 @@ class IndependentWienerIncrements(Rng):
         Covariance matrix of the distribution. 
         It must be symmetric and positive-semidefinite for proper sampling.
     """
-    __slots__ = ('mean', 'delta_t', 'library')
+    __slots__ = ('mean', 'cov', 'delta_t', 'library', 'cores')
                  
-    def __init__(self,  dims, sims, mean=0, delta_t=1, distributed=False):
+    def __init__(self,  dims, sims, mean=0, delta_t=1, use_dask=False,
+                 use_cores=1):
         Rng.__init__(self, dims, sims)
         self.mean = mean
         self.delta_t = delta_t
-        if distributed:
+        if use_dask:
             import dask.array as da
             self.library = da
         else:
             self.library = np
+        self.cores = use_cores
+      
         
     def _check_valid_params(self):
         #TODO: if output is numpy, mean must be size 1 and cov 1x1
@@ -144,10 +147,10 @@ class IndependentWienerIncrements(Rng):
         self._check_valid_params()
         kwargs = {}
         if not self.library is np:
-            kwargs['chunks'] = int(self.sims/4)
+            kwargs['chunks'] = int(self.sims/self.cores)
         out = self.library.random.normal(self.mean, 
-                                         self.delta_t, 
-                                         size=(self.dims, self.sims), **kwargs )
+                                         np.sqrt(self.delta_t), 
+                                         size=(self.dims, self.sims), **kwargs)
 #        print(out.squeeze()[:2])
         return out.squeeze()
 
