@@ -8,7 +8,10 @@ Created on Wed Dec  6 22:16:19 2017
 
 class ValueDict(dict):
     def __getitem__(self, key):
-        val = dict.__getitem__(self, key[0])
+        if isinstance(key, float) or len(key)==1:
+            val = dict.__getitem__(self, key)
+        else:
+            val = dict.__getitem__(self, key[0])
         return val
     
 class Variable(object):
