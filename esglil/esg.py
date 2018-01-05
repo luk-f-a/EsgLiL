@@ -51,6 +51,8 @@ class Model(object):
         for _ in range(steps):
             self.clock += self.dt_sim
             for model in self.eq:
+                if isinstance(self.eq[model], bool):
+                    print(model)
                 self.eq[model].run_step(float(self.clock))
    
     @property
@@ -129,6 +131,7 @@ class Model(object):
 #            return self._sparse_run_to_pandas(dt_out, max_t, out_vars)
 
     def run_multistep_to_pandas(self, dt_out, max_t, out_vars=None):
+
         if isinstance(out_vars, list):
             out_vars = {var:slice(None) for var in out_vars}
         dt_out = float_to_fraction(dt_out)
@@ -139,16 +142,46 @@ class Model(object):
             self.clock += self.dt_sim
             for model in self.eq:
                 if isinstance(self.eq[model], Model):
-                    pd_out = self.eq[model].run_multistep_to_pandas(dt_out, 
-                           self.clock,
-                           out_vars=out_vars)
-                    out.append(pd_out)
+                    df_out = self.eq[model].run_multistep_to_pandas(dt_out, 
+                           self.clock, out_vars=out_vars)
+                    out.append(df_out)
                 else:
                     self.eq[model].run_step(float(self.clock))
-            if dt_out <= self.dt_sim or ts % float(dt_out/self.dt_sim) == 0:        
+#            if dt_out <= self.dt_sim or ts % float(dt_out/self.dt_sim) == 0:        
+            if dt_out <= self.dt_sim or self.clock % float(dt_out) == 0:        
                 out.append(self.df_value_t(out_vars))
-        df = pd.concat(out, axis=1)
+        if len(out)==0:
+            df = None
+        else:
+            out = [o for o in out if o is not None]
+            df = pd.concat(out, axis=1)
         return df
+
+
+    def run_multistep_to_dict(self, dt_out, max_t, out_vars=None):
+        if isinstance(out_vars, list):
+            out_vars = {var:slice(None) for var in out_vars}
+        dt_out = float_to_fraction(dt_out)
+        assert max_t > float(self.clock)
+        out = {}
+        nb_steps = int(round(float((max_t-self.clock)/self.dt_sim),0))
+        for ts in range(1, nb_steps+1):
+            self.clock += self.dt_sim
+            for model in self.eq:
+                if isinstance(self.eq[model], Model):
+                    dict_out = self.eq[model].run_multistep_to_dict(dt_out, 
+                           self.clock, out_vars=out_vars)
+                    out.update(dict_out)
+                else:
+                    self.eq[model].run_step(float(self.clock))
+#            if dt_out <= self.dt_sim or ts % float(dt_out/self.dt_sim) == 0:        
+            if dt_out <= self.dt_sim or self.clock % float(dt_out) == 0:
+                d_val_t = self.dict_value_t(out_vars)
+                if self.clock in out:
+                    out[self.clock].update(d_val_t[self.clock])
+                else:
+                    out.update(d_val_t)
+        return out
         
 #    def _sparse_run_to_pandas(self, dt_out, max_t, out_vars=None):
 #        """This method makes a run blah blah
@@ -215,23 +248,64 @@ class Model(object):
                 model_val = self.eq[model].value_t
                 if isinstance(model_val, dict):
                     for sub_output in model_val:
-                        if get_this_model_step(sub_output):
+                        if get_this_model_step(model) or get_this_model_step(sub_output):
                             val = model_val[sub_output]
-                            #key_name = model+'_'+sub_output
-                            key_name = sub_output
+                            if get_this_model_step(model):
+                                key_name = model + "_" + str(sub_output)
+                            else:
+                                key_name = sub_output
                             v_d = value_to_dictionary(key_name, val)
                             value_dict.update(v_d)
                 else:
                     if get_this_model_step(model):
                         value_dict.update(value_to_dictionary(model, model_val))
-        df = pd.DataFrame.from_dict(value_dict)
+        try:
+            df = pd.DataFrame.from_dict(value_dict)
+        except:
+            print(value_dict)
+            raise
         tuples = list(zip(df.columns, repeat(self.clock)))
         index = pd.MultiIndex.from_tuples(tuples, names=['model', 'time'])
         df.columns = index
         df.index.names = ['sim']
         return df
         
-    
+    def dict_value_t(self, out_vars):
+
+        def get_this_model_step(name):
+            if (out_vars is None):
+                return True
+            if not name in out_vars:
+                return False
+            else:
+                if (((out_vars[name].start is None) or 
+                    out_vars[name].start <= self.clock) and
+                    ((out_vars[name].stop is None) or 
+                out_vars[name].stop >= self.clock)):
+                        return True
+                else:
+                    return False
+
+        dict_out = {}
+        for model in self.eq:
+            if isinstance(self.eq[model], Model):
+                continue
+            else:
+                model_val = self.eq[model].value_t
+                if isinstance(model_val, dict):
+                    for sub_output in model_val:
+                        if get_this_model_step(model) or get_this_model_step(sub_output):
+                            val = model_val[sub_output]
+                            if get_this_model_step(model):
+                                key_name = model + "_" + str(sub_output)
+                            else:
+                                key_name = sub_output
+                            dict_out[key_name] = val
+                else:
+                    if get_this_model_step(model):
+                        dict_out[model] = model_val
+        out = {self.clock: dict_out}
+        return out
 
         
     
