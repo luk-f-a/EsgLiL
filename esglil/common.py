@@ -87,6 +87,9 @@ class Variable(object):
         """
         return self.value_t
     
+    @property
+    def shape(self):
+        return self.value_t.shape
 
         
 class VariableView(object):
