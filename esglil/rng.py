@@ -286,6 +286,7 @@ class PreCalculatedFeed(SDE):
     for dW)
     
     points: 3-d array
+        first dimension is the temporal slices, which will be taken sequentially
     """
  
     __slots__ = ('points', 'col')
