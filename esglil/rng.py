@@ -8,6 +8,7 @@ Created on Sun Sep 24 17:27:12 2017
 import numpy as np
 from esglil.common import Variable
 from esglil.common import SDE
+from esglil.sobol import i4_sobol_std_normal_generator as sobol_normal
 from collections import Iterable
 
 class Rng(Variable):
@@ -120,19 +121,26 @@ class IndWienerIncr(Rng):
         Covariance matrix of the distribution. 
         It must be symmetric and positive-semidefinite for proper sampling.
     """
-    __slots__ = ('mean', 'cov', 'delta_t', 'library', 'cores')
+    __slots__ = ('mean', 'cov', 'delta_t', 'generator', 'chunks')
                  
-    def __init__(self,  dims, sims, mean=0, delta_t=1, use_dask=False,
-                 use_cores=1):
+    def __init__(self,  dims, sims, mean=0, delta_t=1, generator='mc-numpy',
+                 dask_chunks=1):
         Rng.__init__(self, dims, sims)
+        
+        assert generator in ('mc-numpy', 'mc-dask', 'sobol-np')
         self.mean = mean
         self.delta_t = delta_t
-        if use_dask:
+        if generator == 'mc-dask':
             import dask.array as da
-            self.library = da
-        else:
-            self.library = np
-        self.cores = use_cores
+            self.generator = lambda :da.random.normal(mean, np.sqrt(delta_t), 
+                             size=(dims, sims), chunks=int(sims/dask_chunks))
+        elif generator == 'mc-numpy':
+            self.generator = lambda :np.random.normal(mean, np.sqrt(delta_t), 
+                             size=(dims, sims))
+        elif generator == 'sobol-np':
+            s_gen = sobol_normal(dims, sims)
+            self.generator = lambda : (mean+np.sqrt(delta_t)*next(s_gen)).T
+        self.chunks = dask_chunks
       
         
     def _check_valid_params(self):
@@ -145,12 +153,7 @@ class IndWienerIncr(Rng):
         """Return the next iteration of the random number generator
         """
         self._check_valid_params()
-        kwargs = {}
-        if not self.library is np:
-            kwargs['chunks'] = int(self.sims/self.cores)
-        out = self.library.random.normal(self.mean, 
-                                         np.sqrt(self.delta_t), 
-                                         size=(self.dims, self.sims), **kwargs)
+        out = self.generator()
 #        print(out.squeeze()[:2])
         return out.squeeze()
 
@@ -286,7 +289,6 @@ class PreCalculatedFeed(SDE):
     for dW)
     
     points: 3-d array
-        first dimension is the temporal slices, which will be taken sequentially
     """
  
     __slots__ = ('points', 'col')
