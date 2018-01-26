@@ -83,7 +83,7 @@ def esg_e_sr_bonds_cash_2levels(delta_t_l1, delta_t_l2, sims, rho, bond_prices, 
 def get_gbm_hw_nobonds(delta_t, sims, rho, bond_prices, 
                        hw_a = 0.001, hw_sigma = 0.01, gbm_sigma=0.2, 
                        custom_ind_dw=None,
-                       use_dask=False, use_cores=1):
+                       use_dask=False, dask_chunks=1):
     """Returns an esg model with short rate, cash and equity  
     using a GBM and HW models.
     
@@ -106,8 +106,13 @@ def get_gbm_hw_nobonds(delta_t, sims, rho, bond_prices,
     if custom_ind_dw:
         ind_dW = custom_ind_dw
     else:
+        if use_dask:
+            gen = 'mc-dask'
+        else:
+            gen = 'mc-numpy'
+                
         ind_dW = rng.IndWienerIncr(dims=2, sims=sims, mean=0, delta_t=delta_t,
-                                   use_dask=use_dask, use_cores=use_cores)
+                                   generator=gen, dask_chunks=dask_chunks)
     corr = [[1, rho], [rho, 1]]
     C = np.diag([np.sqrt(delta_t), np.sqrt(delta_t)])
     dep_cov = C@corr@C.T 

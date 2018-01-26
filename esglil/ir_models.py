@@ -281,7 +281,7 @@ class HullWhite1fShortRate(SDE):
         #self._check_valid_params()
 
     def run_step(self, t):
-        self._yt += self.dW*self.sigma-self.a*self._yt*(t-self.t_1)
+        self._yt = self._yt + self.dW*self.sigma-self.a*self._yt*(t-self.t_1)
         self.value_t = self.B + self._yt        
         self.t_1 = t
     

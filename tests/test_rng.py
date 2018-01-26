@@ -43,7 +43,7 @@ class Wiener_test(unittest.TestCase):
         df_full_run = self.esg.run_multistep_to_pandas(dt_out=1, max_t=40)
         self.assertEqual(type(df_full_run), pd.DataFrame,
                          'incorrect type')
-        self.assertEqual(df_full_run.shape, (10, int(2*40/self.delta_t)))
+        self.assertEqual(df_full_run.shape, (10, int(2*40)))
          
 class Normal_Rng_test(unittest.TestCase):
     """Test uniform rng with numpy output
@@ -101,6 +101,61 @@ class MCMV_Normal_Rng_test(unittest.TestCase):
         
         #np.tile(np.arange(1,6),2).reshape(2,5)
 
+class MCMV_IndWienerIncr_Rng_test(unittest.TestCase):
+    """Test uniform rng with numpy output
+    """
+    def setUp(self):
+        self.rng = rng.MCMVIndWienerIncr(dims=2, sims_outer=50000, sims_inner=100,
+                                     mean=0, delta_t=1/2, mcmv_time=1)
+        cov = np.array([[1,0.7],[0.7,1]])
+        self.corr_norm =  rng.CorrelatedRV(rng=self.rng, input_cov=np.eye(2,2),
+                                           target_cov=cov)
+        self.esg = ESG(dt_sim=1/2, ind_dW=self.rng, dW=self.corr_norm)
+        
+    def test_sims(self):
+        #_before_mcmv_time
+        cf = self.esg.run_multistep_to_pandas(dt_out=1/2, max_t=2, 
+                                  out_vars=['ind_dW'])
+        shape = cf.xs('ind_dW_0', level='model', axis=1)[0.5].unique().shape
+        self.assertEqual(shape[0], self.rng.sims_outer)
+
+        #after_mcmv_time
+        shape = cf.xs('ind_dW_0', level='model', axis=1)[1.5].unique().shape
+        self.assertEqual(shape[0], self.rng.sims_outer*self.rng.sims_inner)
+        
+        #test_mean
+        mean = cf.xs('ind_dW_0', level='model', axis=1).mean()
+        self.assertTrue(np.allclose(mean, 0, atol=0.01))
+        
+class MCMV_IndWienerIncr_Rng_dask_test(unittest.TestCase):
+    """Test uniform rng with numpy output
+    """
+    def setUp(self):
+        self.rng = rng.MCMVIndWienerIncr(dims=2, sims_outer=5000, sims_inner=100,
+                                     mean=0, delta_t=1/4, mcmv_time=1,
+                                     generator='mc-dask', dask_chunks=2)
+        cov = np.array([[1,0.7],[0.7,1]])
+        self.corr_norm =  rng.CorrelatedRV(rng=self.rng, input_cov=np.eye(2,2),
+                                           target_cov=cov)
+        self.esg = ESG(dt_sim=1/2, ind_dW=self.rng, dW=self.corr_norm)
+        
+    def test_sims(self):
+        #_before_mcmv_time
+        cf = self.esg.run_multistep_to_dict(dt_out=1/4, max_t=0.5, 
+                                  out_vars=['ind_dW'])
+
+        self.assertTrue(cf[0.5]['ind_dW'].chunks==((2,), (250000, 250000)))
+
+        #after_mcmv_time
+        cf = self.esg.run_multistep_to_dict(dt_out=1/4, max_t=2, 
+                                  out_vars=['ind_dW'])
+        self.assertTrue(cf[1.5]['ind_dW'].chunks==((2,), (250000, 250000)))        
+        
+        #test_mean
+        mean = cf[1.5]['ind_dW'].mean().compute()
+        self.assertTrue(np.allclose(mean, 0, atol=0.01))
+
+        
 if __name__ == '__main__':
     unittest.main()              
             
