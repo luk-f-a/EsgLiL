@@ -1,5 +1,10 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+Created on Mon Jan  8 10:00:01 2018
+
+@author: luk-f-a
+"""
+
 """
   Licensing:
     This code is distributed under the MIT license.
@@ -17,7 +22,7 @@
     Original code is available from http://people.sc.fsu.edu/~jburkardt/py_src/sobol/sobol.html
 """
 
-from __future__ import division
+#from __future__ import division
 import numpy as np
 from scipy.stats import norm
 
@@ -149,6 +154,28 @@ def i4_sobol_generate_std_normal(dim_num, n, skip=1):
     normals = norm.ppf(sobols)
 
     return normals
+
+def i4_sobol_std_normal_generator(dim_num, n, skip=1):
+    """
+    Generator for multivariate standard normal quasi-random variables.
+
+    Parameters:
+      Input, integer dim_num, the spatial dimension.
+      Input, integer n, the number of points to generate.
+      Input, integer SKIP, the number of initial points to skip.
+
+      Output, real np array of shape (n, dim_num).
+    """
+    #r = np.full((n, dim_num), np.nan)
+    seed = skip
+    while True:
+        r = np.empty((n, dim_num))
+        for j in range(n):
+            r[j, 0:dim_num], seed = i4_sobol(dim_num, seed)
+        normals = norm.ppf(r)
+        yield normals
+
+
 
 
 def i4_sobol(dim_num, seed):
@@ -526,5 +553,3 @@ def is_prime(n):
             return False
         p += 6
     return True
-
-
