@@ -9,6 +9,7 @@ import numpy as np
 from esglil.common import Variable
 from esglil.common import SDE
 from esglil.sobol import i4_sobol_std_normal_generator as sobol_normal
+from esglil.multithreaded_rng import MultithreadedRNG
 from collections import Iterable
 
 class Rng(Variable):
@@ -168,7 +169,7 @@ class IndWienerIncr(Rng):
 #        print(out.squeeze()[:2])
         return out.squeeze()
 
-class MCMVIndWienerIncr(Rng):
+class MCMVIndWienerIncr_old(Rng):
     """class for class for independent increments of Wiener process with 
     special structure for MonteCarlo pricing at t>0
 
@@ -261,9 +262,109 @@ class MCMVIndWienerIncr(Rng):
         out = self.generator(sims)
 #        print(out.squeeze()[:2])
         return out.squeeze()
-        return out.squeeze()
+        
     
+class MCMVIndWienerIncr(Rng):
+    """class for class for independent increments of Wiener process with 
+    special structure for MonteCarlo pricing at t>0
 
+     Parameters
+    ----------
+    dims: int
+        Amount of dimensions in for the output normal variable
+    
+    sims_outer : int
+        Amount of simulations to produce in each timestep for the
+        outer simulation
+        
+    sims_inner : int
+        Amount of simulations to produce in each timestep for the
+        inner simulation
+        
+    mean : 1-D array_like, of length N
+        Mean of the N-dimensional distribution.
+        
+    delta_t : float or fraction
+        Time step of the increment from which the variance is derived
+        
+    generator: string {'mc-numpy', ''mc-dask'}
+        Type of generator. 
+        mc-numpy: Monte Carlo numpy generator
+        mc-dask: Monte Carlo generator that uses dask for parallel calculations
+        
+    dask_chunks: int
+        In how many parts should the simulations be split for dask
+        In a Windows machine (even though it had 2 cores), 1 was the best choice
+         
+    mcmv_time: scalar
+        Time at which the MC valuation will be performed. At this time
+        there will be sims_inner*sims_outer total simulations but only 
+        simg_outer of them will be different values
+        
+    fixed_inner_arrival: True or False
+        If true, for each of the sims_outer different values at time t, the
+        arrival path (simulations before t) will be identical.
+        If false, each of the identical sims_inner at time t, will not have
+        identical values at time<t, but randomized to arrive via 
+        different paths using a brownian bridge. This is only appropriate
+        for functions which are not path dependent, only dependent on t. This 
+        second option is not yet implemented
+    """
+    __slots__ = ('mean', 'delta_t', 'sims_inner', 'sims_outer', 'mcmv_time',
+                 'fixed_arrival', 'generator', 'dask_generator', 'chunks',
+                 'multithr_generator')
+                 
+    def __init__(self,  dims, sims_outer, sims_inner, mean, delta_t, 
+                 mcmv_time, fixed_inner_arrival=True, generator='mc-numpy',
+                 n_jobs=1):
+        Rng.__init__(self, dims, sims_outer*sims_inner)
+        self.mean = mean
+        self.sims_inner = sims_inner
+        self.sims_outer = sims_outer
+        self.mcmv_time = mcmv_time
+        self.fixed_arrival = fixed_inner_arrival
+
+        self.generator = lambda sims:np.random.normal(mean, np.sqrt(delta_t), 
+                         size=(dims, sims))   
+        self.dask_generator = None
+        self.multithr_generator = None
+        if generator == 'mc-dask':
+            import dask.array as da
+            chunks = int((sims_outer * sims_inner)/n_jobs)
+            self.chunks = chunks
+            self.dask_generator = lambda sims:da.random.normal(mean, np.sqrt(delta_t), 
+                             size=(dims, sims), chunks=chunks)
+        if generator == 'mc-multithreaded':
+            self.dask_generator = None
+            rgen = MultithreadedRNG(dims*sims_outer * sims_inner, threads=n_jobs)
+            std = np.sqrt(delta_t)
+            self.multithr_generator = lambda sims: (mean+std*rgen.fill().values).reshape((dims, sims))
+
+
+    def _check_valid_params(self):
+        #TODO: if output is numpy, mean must be size 1 and cov 1x1
+        # if output is xr size of mean and cov must agree with svar dim
+        pass
+    
+    def run_step(self, t):
+        #self.value_t[...] = self.generate()
+        if t <= self.mcmv_time:
+            rn = self.generate(self.sims_outer)
+            self.value_t  = np.tile(rn, [1,self.sims_inner]).squeeze()
+        else:
+            if self.dask_generator is not None:
+                self.generator = self.dask_generator
+            if self.multithr_generator is not None:
+                self.generator = self.multithr_generator
+            self.value_t  = self.generate(self.sims_outer*self.sims_inner)
+            
+    def generate(self, sims):
+        """Return the next iteration of the random number generator
+        """
+        self._check_valid_params()
+        out = self.generator(sims)
+#        print(out.squeeze()[:2])
+        return out.squeeze()
     
 class MCMVNormalRng(Rng):
     """class for normal random number generation with 

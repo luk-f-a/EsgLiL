@@ -40,7 +40,7 @@ class Model(object):
         self.dt_sim = float_to_fraction(dt_sim)
         for eq in models:
             if hasattr(eq, 'dt_sim'):
-                assert dq.dt_sim < dt_sim, "Cannot add modelloop with larger timestep"
+                assert eq.dt_sim < dt_sim, "Cannot add modelloop with larger timestep"
         
         
     def run_step(self, t=None):
@@ -106,7 +106,9 @@ class Model(object):
                     model._replace_links(key, old_object, item)                
                 
             
-    
+    def __delitem__(self, key):
+        del self.eq[key]
+        
     def full_run(self, dt_out, max_t):
         dt_out = Fraction(dt_out)
         assert float(dt_out/self.dt_sim) % 1 == 0
