@@ -17,14 +17,15 @@ import numpy as np
 
 class MultithreadedRNG(object):
     def __init__(self, n, seed=None, threads=None):
-        rs = randomstate.prng.xorshift1024.RandomState(seed)
+        #rs = randomstate.prng.xorshift1024.RandomState(seed)
+        rs = randomstate.prng.xoroshiro128plus.RandomState(seed)
         if threads is None:
             threads = multiprocessing.cpu_count()
         self.threads = threads
 
         self._random_states = []
         for _ in range(0, threads-1):
-            _rs = randomstate.prng.xorshift1024.RandomState()
+            _rs = randomstate.prng.xoroshiro128plus.RandomState()
             _rs.set_state(rs.get_state())
             self._random_states.append(_rs)
             rs.jump()

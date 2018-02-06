@@ -139,7 +139,7 @@ class IndWienerIncr(Rng):
                  dask_chunks=1):
         Rng.__init__(self, dims, sims)
         
-        assert generator in ('mc-numpy', 'mc-dask', 'sobol-np')
+        assert generator in ('mc-numpy', 'mc-dask', 'sobol-np', 'mc-dask-xsh128+')
         self.mean = mean
         self.delta_t = delta_t
         if generator == 'mc-dask':
@@ -153,7 +153,12 @@ class IndWienerIncr(Rng):
             s_gen = sobol_normal(dims, sims)
             self.generator = lambda : (mean+np.sqrt(delta_t)*next(s_gen)).T
 
-      
+        elif generator == 'mc-dask-xsh128+':
+            import sys
+            sys.path.append('/home/lucio/mypyprojects/ng-numpy-randomstate/')
+            from randomstate1.dask.random import normal as xsh128_normal
+            self.generator = lambda :xsh128_normal(mean, np.sqrt(delta_t), 
+                             size=(dims, sims), chunks=int(sims/dask_chunks))            
         
     def _check_valid_params(self):
         #TODO: if output is numpy, mean must be size 1 and cov 1x1
@@ -237,7 +242,10 @@ class MCMVIndWienerIncr_old(Rng):
         elif generator == 'mc-numpy':
             self.library = np
             self.generator = lambda sims:np.random.normal(mean, np.sqrt(delta_t), 
-                             size=(dims, sims))        
+                             size=(dims, sims))       
+            
+
+            
     def _check_valid_params(self):
         #TODO: if output is numpy, mean must be size 1 and cov 1x1
         # if output is xr size of mean and cov must agree with svar dim
@@ -335,12 +343,24 @@ class MCMVIndWienerIncr(Rng):
             self.dask_generator = lambda sims:da.random.normal(mean, np.sqrt(delta_t), 
                              size=(dims, sims), chunks=chunks)
         if generator == 'mc-multithreaded':
-            self.dask_generator = None
             rgen = MultithreadedRNG(dims*sims_outer * sims_inner, threads=n_jobs)
             std = np.sqrt(delta_t)
             self.multithr_generator = lambda sims: (mean+std*rgen.fill().values).reshape((dims, sims))
 
-
+        elif generator == 'mc-dask-xsh128+':
+            import dask.array as da
+            chunks = int((sims_outer * sims_inner)/n_jobs)
+            self.chunks = chunks
+            import os
+            import sys
+            parent = os.path.dirname
+            print(os.path.join(parent(parent(parent(parent(__file__)))), 'ng-numpy-randomstate'))
+            sys.path.append(os.path.join(parent(parent(parent(parent(__file__)))), 'ng-numpy-randomstate'))
+            sys.path.append('/home/lucio/mypyprojects/ng-numpy-randomstate/')
+            from randomstate1.dask.random import normal as xsh128_normal
+            self.generator = lambda sims:xsh128_normal(mean, np.sqrt(delta_t), 
+                             size=(dims, sims), chunks=chunks) 
+            
     def _check_valid_params(self):
         #TODO: if output is numpy, mean must be size 1 and cov 1x1
         # if output is xr size of mean and cov must agree with svar dim

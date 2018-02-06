@@ -133,7 +133,36 @@ class MCMV_IndWienerIncr_Rng_dask_test(unittest.TestCase):
     def setUp(self):
         self.rng = rng.MCMVIndWienerIncr(dims=2, sims_outer=5000, sims_inner=100,
                                      mean=0, delta_t=1/4, mcmv_time=1,
-                                     generator='mc-dask', dask_chunks=2)
+                                     generator='mc-dask', n_jobs=2)
+        cov = np.array([[1,0.7],[0.7,1]])
+        self.corr_norm =  rng.CorrelatedRV(rng=self.rng, input_cov=np.eye(2,2),
+                                           target_cov=cov)
+        self.esg = ESG(dt_sim=1/2, ind_dW=self.rng, dW=self.corr_norm)
+        
+    def test_sims(self):
+        #_before_mcmv_time
+        cf = self.esg.run_multistep_to_dict(dt_out=1/4, max_t=0.5, 
+                                  out_vars=['ind_dW'])
+
+#        self.assertTrue(cf[0.5]['ind_dW'].chunks==((2,), (250000, 250000)))
+        self.assertTrue(cf[0.5]['ind_dW'].shape == (2,5000*100))
+
+        #after_mcmv_time
+        cf = self.esg.run_multistep_to_dict(dt_out=1/4, max_t=2, 
+                                  out_vars=['ind_dW'])
+        self.assertTrue(cf[1.5]['ind_dW'].chunks==((2,), (250000, 250000)))        
+        
+        #test_mean
+        mean = cf[1.5]['ind_dW'].mean().compute()
+        self.assertTrue(np.allclose(mean, 0, atol=0.01))
+
+class IndWienerIncr_Rng_dask_xorshiro_test(unittest.TestCase):
+    """Test uniform rng with numpy output
+    """
+    def setUp(self):
+        self.rng = rng.IndWienerIncr(dims=2, sims=500000,
+                                     mean=0, delta_t=1/4, 
+                                     generator='mc-dask-xsh128+', dask_chunks=2)
         cov = np.array([[1,0.7],[0.7,1]])
         self.corr_norm =  rng.CorrelatedRV(rng=self.rng, input_cov=np.eye(2,2),
                                            target_cov=cov)
