@@ -9,7 +9,7 @@ import numpy as np
 from esglil.common import Variable
 from esglil.common import SDE
 from esglil.sobol import i4_sobol_std_normal_generator as sobol_normal
-from esglil.multithreaded_rng import MultithreadedRNG
+from esglil.multithreaded_rng import MultithreadedRNG, BackgroundRNGenerator, BackgroundProcessRNGenerator
 from collections import Iterable
 
 class Rng(Variable):
@@ -324,7 +324,7 @@ class MCMVIndWienerIncr(Rng):
                  
     def __init__(self,  dims, sims_outer, sims_inner, mean, delta_t, 
                  mcmv_time, fixed_inner_arrival=True, generator='mc-numpy',
-                 n_jobs=1):
+                 n_jobs=1, max_prefetch=1):
         Rng.__init__(self, dims, sims_outer*sims_inner)
         self.mean = mean
         self.sims_inner = sims_inner
@@ -339,7 +339,7 @@ class MCMVIndWienerIncr(Rng):
         if generator == 'mc-dask':
             import dask.array as da
             chunks = int((sims_outer * sims_inner)/n_jobs)
-            self.chunks = chunks
+            self.chunks = 1 #chunks
             self.dask_generator = lambda sims:da.random.normal(mean, np.sqrt(delta_t), 
                              size=(dims, sims), chunks=chunks)
         if generator == 'mc-multithreaded':
@@ -347,19 +347,26 @@ class MCMVIndWienerIncr(Rng):
             std = np.sqrt(delta_t)
             self.multithr_generator = lambda sims: (mean+std*rgen.fill().values).reshape((dims, sims))
 
-        elif generator == 'mc-dask-xsh128+':
+        if generator == 'mc-multithreaded-background':
+            rgen = BackgroundRNGenerator(dims*sims_outer * sims_inner,
+                                         threads=n_jobs, max_prefetch=max_prefetch)
+            std = np.sqrt(delta_t)
+            self.multithr_generator = lambda sims: (mean+std*rgen.generate()).reshape((dims, sims))
+
+
+        elif generator == 'mc-dask-fast':
             import dask.array as da
-            chunks = int((sims_outer * sims_inner)/n_jobs)
-            self.chunks = chunks
+#            chunks = int((sims_outer * sims_inner)/n_jobs)
+            self.chunks = 1 #chunks
             import os
             import sys
             parent = os.path.dirname
-            print(os.path.join(parent(parent(parent(parent(__file__)))), 'ng-numpy-randomstate'))
+#            print(os.path.join(parent(parent(parent(parent(__file__)))), 'ng-numpy-randomstate'))
             sys.path.append(os.path.join(parent(parent(parent(parent(__file__)))), 'ng-numpy-randomstate'))
-            sys.path.append('/home/lucio/mypyprojects/ng-numpy-randomstate/')
+            
             from randomstate1.dask.random import normal as xsh128_normal
             self.generator = lambda sims:xsh128_normal(mean, np.sqrt(delta_t), 
-                             size=(dims, sims), chunks=chunks) 
+                             size=(dims, sims), chunks=1) 
             
     def _check_valid_params(self):
         #TODO: if output is numpy, mean must be size 1 and cov 1x1
