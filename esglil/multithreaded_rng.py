@@ -9,7 +9,7 @@ Taken from
 http://bashtage.github.io/ng-numpy-randomstate/doc/multithreading.html
 """
 
-import randomstate
+
 import multiprocessing
 import concurrent.futures
 import numpy as np
@@ -19,6 +19,7 @@ import threading
 class MultithreadedRNG(object):
     def __init__(self, n, seed=None, threads=None):
         #rs = randomstate.prng.xorshift1024.RandomState(seed)
+        import randomstate
         rs = randomstate.prng.xoroshiro128plus.RandomState(seed)
         if threads is None:
             threads = multiprocessing.cpu_count()

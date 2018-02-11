@@ -9,7 +9,7 @@ Created on Tue Nov  7 22:53:54 2017
 import numpy as np
 from scipy.interpolate import make_interp_spline
 from esglil.common import SDE, ValueDict
-import xarray as xr
+
 from collections import Iterable
 
 def hw1f_sigma_calibration(bond_prices, swaption_prices, a):
@@ -128,6 +128,58 @@ def hw1f_sigma_calibration(bond_prices, swaption_prices, a):
     assert a_model==a
     return sigma
 
+def hw1f_b_calibration_dict(bond_prices, a, sigma):
+    """Based on zero coupon bond prices, it will return a function b(t) for
+    the hw1f model dr(t)=[b(t)-a*r(t)]dt+sigma*dW(t)
+    
+     Parameters
+    ----------
+    bond_prices: dictionary or DataArray
+        initial bond prices to be moved forward in time. If passing a 
+        dictionary it should be {maturity: price}, if passing a DataArray
+        it should contain a dimension 'maturity' with the prices as values
+
+    Returns
+    ----------
+    b(t) : function
+        mean reversion level
+    
+    r_zero: scalar
+        initial value of the short rate
+    """
+    import xarray as xr
+    assert isinstance(bond_prices, dict)
+    
+
+    
+    b = {}
+    #short rate, t is current time, tp1 is "t plus 1", tp2 is t plus 2
+    p_t = 1 #bond price at time t
+    t = 0
+    maturities = list(bond_prices.keys())
+    tp1 = float(min(maturities))
+    p_tp1 = bond_prices[tp1]
+    r_zero = -(np.ln(p_tp1)-np.ln(p_t))/tp1
+    t = tp1
+    p_t = p_tp1
+    #loop on all time steps where second derivatives can be calculated
+    times = zip(maturities.values,
+                maturities[1:].values,
+                maturities[2:].values)
+    for t, tp1, tp2 in times:
+        assert int(t)==float(t), 'Temporarily, only integer maturities are allowed'
+        t = float(t)
+        p_t = bond_prices[t]
+        p_tp1 = bond_prices[tp1]
+        p_tp2 = bond_prices[tp2]
+        f_t = -(np.ln(p_tp1)-np.ln(p_t))/(tp1 - t)
+        f_tp1 = -(np.ln(p_tp2)-np.ln(p_tp1))/(tp2 - tp1)
+        d_f = (f_tp1 - f_t)/(tp1 - t)
+        b[t] = d_f + a*f_t + sigma**2/2/a*(1-np.exp(-2*a*t))
+
+    b_fc = lambda t: b[t]
+    return b_fc, r_zero
+               
 def hw1f_b_calibration(bond_prices, a, sigma):
     """Based on zero coupon bond prices, it will return a function b(t) for
     the hw1f model dr(t)=[b(t)-a*r(t)]dt+sigma*dW(t)
@@ -147,6 +199,7 @@ def hw1f_b_calibration(bond_prices, a, sigma):
     r_zero: scalar
         initial value of the short rate
     """
+    import xarray as xr
     if type(bond_prices) is dict:
         bond_prices = _bond_dict_to_xr(bond_prices)
     assert len(bond_prices.dims)==1
@@ -179,9 +232,9 @@ def hw1f_b_calibration(bond_prices, a, sigma):
 
     b_fc = lambda t: b.loc[{'time':t}]
     return b_fc, r_zero
-               
 
 def _bond_dict_to_xr(dict_):
+    import xarray as xr
     return xr.DataArray(list(dict_.values()), dims=['maturity'],
                                  coords=[list(dict_.keys())])
 
@@ -218,7 +271,7 @@ def hw1f_B_function(bond_prices, a, sigma, return_p_and_f=False):
         
     """
     
-
+    import xarray as xr
     if type(bond_prices) is dict:
         bond_prices = _bond_dict_to_xr(bond_prices)
     assert len(bond_prices.dims)==1
@@ -242,6 +295,61 @@ def hw1f_B_function(bond_prices, a, sigma, return_p_and_f=False):
     else:
         return B
 
+def hw1f_B_function_dict(bond_prices, a, sigma, return_p_and_f=False):
+    """Based on zero coupon bond prices, it will return a function B(t) 
+    which is the integral between 0 and T of parameter b(t) in 
+    the hw1f model dr(t)=[b(t)-a*r(t)]dt+sigma*dW(t)    
+    
+    Parameters
+    ----------
+    bond_prices: dictionary or DataArray
+        initial bond prices to be moved forward in time. If passing a 
+        dictionary it should be {maturity: price}, if passing a DataArray
+        it should contain a dimension 'maturity' with the prices as values
+        
+    a: scalar 
+        mean reversion speed
+    
+    sigma : scalar
+        standard deviation
+    
+    return_p_and_f: boolean
+        whether the bond price function (interpolating the input data) 
+        and the instantaneous forward rate function will be returned. These
+        are both necessar in some formulas of HW bond prices
+
+    Returns
+    ----------
+    B(t) : function
+        integral of b(s) between 0 and t
+    
+    f(0,t): function
+        instantaneous forward rate for maturity t, 
+        
+    """
+    
+
+
+    maturities = np.sort(np.array(list(bond_prices.keys())))
+    prices = np.array(list(bond_prices.values()))
+    #calculate yield to maturity
+    ytm_t = -np.log(prices)/maturities
+    abscisas = maturities
+    ytm_0 = ytm_t[0]-abscisas[0]*(ytm_t[1]-ytm_t[0])/(abscisas[1]-abscisas[0])
+    ytm_100 = ytm_t[-1]
+
+    ytm_t = np.concatenate([np.array([ytm_0]), ytm_t, np.array([ytm_100])])
+    #abscisas = np.array([0] + list(abscisas)+[100])
+    abscisas = np.array([0]+maturities.tolist()+[100])
+    b_spline = make_interp_spline(abscisas, ytm_t)
+    f = lambda t: b_spline(t)+t*b_spline.derivative()(t)
+    B = lambda t: f(t)+ sigma**2/(2*a**2)*(1-np.exp(-a*t))**2
+    if return_p_and_f:
+        P = lambda t: np.exp(-t*b_spline(t))
+        return B, f, P
+    else:
+        return B
+    
 class HullWhite1fShortRate(SDE):
     """class for (1 Factor) Hull White model of short interest rate
     This class only implements the short rate

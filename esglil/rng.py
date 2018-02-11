@@ -324,7 +324,7 @@ class MCMVIndWienerIncr(Rng):
                  
     def __init__(self,  dims, sims_outer, sims_inner, mean, delta_t, 
                  mcmv_time, fixed_inner_arrival=True, generator='mc-numpy',
-                 n_jobs=1, max_prefetch=1):
+                 n_jobs=1, max_prefetch=1, dask_chunks=1):
         Rng.__init__(self, dims, sims_outer*sims_inner)
         self.mean = mean
         self.sims_inner = sims_inner
@@ -338,8 +338,8 @@ class MCMVIndWienerIncr(Rng):
         self.multithr_generator = None
         if generator == 'mc-dask':
             import dask.array as da
-            chunks = int((sims_outer * sims_inner)/n_jobs)
-            self.chunks = 1 #chunks
+            chunks = int((sims_outer * sims_inner)/dask_chunks)
+            self.chunks = chunks #chunks
             self.dask_generator = lambda sims:da.random.normal(mean, np.sqrt(delta_t), 
                              size=(dims, sims), chunks=chunks)
         if generator == 'mc-multithreaded':
@@ -356,8 +356,8 @@ class MCMVIndWienerIncr(Rng):
 
         elif generator == 'mc-dask-fast':
             import dask.array as da
-#            chunks = int((sims_outer * sims_inner)/n_jobs)
-            self.chunks = 1 #chunks
+            chunks = int((sims_outer * sims_inner)/dask_chunks)
+            self.chunks = chunks #chunks
             import os
             import sys
             parent = os.path.dirname
@@ -366,7 +366,7 @@ class MCMVIndWienerIncr(Rng):
             
             from randomstate1.dask.random import normal as xsh128_normal
             self.generator = lambda sims:xsh128_normal(mean, np.sqrt(delta_t), 
-                             size=(dims, sims), chunks=1) 
+                             size=(dims, sims), chunks=chunks) 
             
     def _check_valid_params(self):
         #TODO: if output is numpy, mean must be size 1 and cov 1x1
