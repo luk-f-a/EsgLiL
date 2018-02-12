@@ -12,7 +12,8 @@ sys.path.append(parent(parent(parent(__file__))))
 from esglil.common import Variable
 from esglil.esg import Model
 from esglil.equity_models import GeometricBrownianMotion
-from esglil.rng import IndWienerIncr
+from esglil.rng import IndWienerIncr, MCMVIndWienerIncr
+from esglil.multithreaded_rng import MultithreadedRNG
 import numexpr as ne
 
 
@@ -28,10 +29,11 @@ def value(x, input_name):
             return getattr(x, input_name)
 
 def test1():
-    dW = IndWienerIncr(1, 1000000)
+    dW = IndWienerIncr(1, 10_000_000)
     S = GeometricBrownianMotion(mu=1, sigma=0.2, dW=dW)
     esg = Model(dt_sim=1, dW=dW, S=S)
-    out = esg.run_multistep_to_pandas(dt_out=1, max_t=40)
+    out = esg.run_multistep_to_pandas(dt_out=1, max_t=20)
+    
 #    print(out)
     
 def test2():
@@ -64,10 +66,27 @@ def test2():
                  
 #    print(esg.df_value_t(out_vars=None))
     
+def test3():
+    ne.set_num_threads(4)
+    dW = IndWienerIncr(1, 1000000, generator='mc-numpy')
+    S = GeometricBrownianMotion(mu=1, sigma=0.2, dW=dW)
+    esg = Model(dt_sim=1, dW=dW, S=S)
+    d = esg.run_multistep_to_dict(dt_out=1, max_t=20, use_numexpr=True)
+    
+def test4():
+    ne.set_num_threads(4)
+    dW = MCMVIndWienerIncr(1, 10_000_000,1, 0,1,mcmv_time=1, generator='mc-multithreaded',
+                           n_jobs=4)
+    S = GeometricBrownianMotion(mu=1, sigma=0.2, dW=dW)
+    esg = Model(dt_sim=1, dW=dW, S=S)
+    d = esg.run_multistep_to_dict(dt_out=1, max_t=20, use_numexpr=True)    
+    
+#    print(d[2]['S'])
+    
 import datetime
 tic = datetime.datetime.now()
 test1()
 print(datetime.datetime.now()-tic)
 tic = datetime.datetime.now()
-test2()
+test4()
 print(datetime.datetime.now()-tic)

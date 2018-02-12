@@ -6,6 +6,16 @@ Created on Wed Dec  6 22:16:19 2017
 @author: luk-f-a
 """
 
+def value(x, input_name):
+    if input_name == 'self_1':
+        return x.value_t
+    else:
+        #print(input_name, type(getattr(x, input_name)), isinstance(getattr(x, input_name), Variable) )
+        if isinstance(getattr(x, input_name), Variable):
+            return getattr(x, input_name).value_t
+        else:
+            return getattr(x, input_name) 
+        
 class ValueDict(dict):
     def __getitem__(self, key):
         if isinstance(key, float) or len(key)==1:
@@ -202,6 +212,17 @@ class SDE(Variable):
     def __call__(self):
         return self.value_t
     
+    def _inputs_to_dict(self, ex, locals_):
+        local_dict = {}
+        for inp in ex.input_names:
+            try:
+                local_dict[inp] = value(self, inp)
+            except AttributeError:
+                local_dict[inp] = locals_[inp]    
+            except:
+                raise
+        return local_dict
+                
 class TimeDependentParameter(Variable):
     __slots__ = ('f', 'value_t')
      
@@ -228,3 +249,6 @@ class TimeDependentParameter(Variable):
 #        
 #    def __call__(self):
 #        return self.out
+        
+   
+    

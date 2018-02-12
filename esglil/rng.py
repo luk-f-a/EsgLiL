@@ -34,6 +34,9 @@ class Rng(Variable):
         #self.value_t[...] = self.generate()
         self.value_t = self.generate()
         
+    def run_step_ne(self, t):
+        self.run_step(t)
+        
     def generate(self):
         """Implement here the code to provide the next iteration of the
         random number generator

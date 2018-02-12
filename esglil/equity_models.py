@@ -7,7 +7,8 @@ Created on Tue Oct 24 20:28:07 2017
 """
 import numpy as np
 from esglil.common import SDE
-    
+import numexpr as ne
+
 class GeometricBrownianMotion(SDE):
     """class for Geometric Brownian Motion model of equity returns
         dS/S = mu*dt + sigma*dW
@@ -39,6 +40,12 @@ class GeometricBrownianMotion(SDE):
         self.value_t = self.value_t*(1 + self.mu*(t-self.t_1)+self.dW*self.sigma)
         self.t_1 = t
         
+    def run_step_ne(self, t):
+        fc = ne.NumExpr('self_1*(1 + mu*(t-t_1)+dW*sigma)')
+        local_dict = self._inputs_to_dict(fc, locals())
+        args = ne.necompiler.getArguments(fc.input_names, local_dict=local_dict)
+        fc(*args, out=self.value_t, order='K', casting='safe', ex_uses_vml=False)
+        self.t_1 = t
         
         
 class GBM_exact(SDE):
