@@ -42,17 +42,23 @@ class Model(object):
             if hasattr(eq, 'dt_sim'):
                 assert eq.dt_sim < dt_sim, "Cannot add modelloop with larger timestep"
         
+    def initialize(self):
+        self.run_step(0)
         
     def run_step(self, t=None):
         if t is None:
             steps = 1
+        elif t == 0:
+            steps = 1
         else:
             steps = int(round((t-self.clock)/self.dt_sim,0))
+            
         for _ in range(steps):
-            self.clock += self.dt_sim
+            if t > 0:
+                self.clock += self.dt_sim
             for model in self.eq:
-                if isinstance(self.eq[model], bool):
-                    print(model)
+#                if isinstance(self.eq[model], bool):
+#                    print(model)
                 self.eq[model].run_step(float(self.clock))
    
     @property
@@ -120,18 +126,6 @@ class Model(object):
                 out[self.clock] = self.value_t
         return out
     
-        
-#    def run_multistep_to_pandas_old(self, dt_out, max_t, out_vars=None):
-#        import pandas as pd
-#        dt_out = float_to_fraction(dt_out)
-#        assert max_t > float(self.clock)
-#        if dt_out < self.dt_sim:
-#            assert self.dt_sim % dt_out == 0
-#            return self._dense_run_to_pandas(dt_out, max_t, out_vars)
-#        else:
-#            assert dt_out % self.dt_sim == 0
-#            return self._sparse_run_to_pandas(dt_out, max_t, out_vars)
-
     def run_multistep_to_pandas(self, dt_out, max_t, out_vars=None):
 
         if isinstance(out_vars, list):
@@ -160,9 +154,11 @@ class Model(object):
         return df
 
 
-    def run_multistep_to_dict(self, dt_out, max_t, out_vars=None):
+    def run_multistep_to_dict(self, dt_out, max_t, out_vars=None, use_numexpr=False):
         if isinstance(out_vars, list):
             out_vars = {var:slice(None) for var in out_vars}
+        if use_numexpr:
+            self.initialize()
         dt_out = float_to_fraction(dt_out)
         assert max_t > float(self.clock)
         out = {}
@@ -175,7 +171,10 @@ class Model(object):
                            self.clock, out_vars=out_vars)
                     out.update(dict_out)
                 else:
-                    self.eq[model].run_step(float(self.clock))
+                    if use_numexpr:
+                        self.eq[model].run_step_ne(float(self.clock))
+                    else:
+                        self.eq[model].run_step(float(self.clock))
 #            if dt_out <= self.dt_sim or ts % float(dt_out/self.dt_sim) == 0:        
             if dt_out <= self.dt_sim or self.clock % float(dt_out) == 0:
                 d_val_t = self.dict_value_t(out_vars)
@@ -185,46 +184,6 @@ class Model(object):
                     out.update(d_val_t)
         return out
         
-#    def _sparse_run_to_pandas(self, dt_out, max_t, out_vars=None):
-#        """This method makes a run blah blah
-#        """
-#        out = []
-#        nb_steps = int(round(float((max_t-self.clock)/self.dt_sim),0))
-#        for ts in range(1, nb_steps+1):
-#            self.run_step()
-#            if ts % float(dt_out/self.dt_sim) == 0:
-#                out.append(self.df_value_t(out_vars))
-#
-#        df = pd.concat(out, axis=1)
-#        return df
-#    
-#    def _dense_run_to_pandas(self, dt_out, max_t, out_vars=None):
-#        """
-#        This method allows for a dt_out which is smaller than the dt of the 
-#        model, thus allowing to record the full history of sub-models running on
-#        a more granular timegrid
-#        """
-#        out = []
-#        nb_steps = int(round(max_t/dt_out,0))
-#
-#        for ts in range(1, nb_steps+1):
-#            t = ts*dt_out
-#
-#            if t % self.dt_sim == 0:
-#                self.run_step()
-#                out.append(self.df_value_t(out_vars))
-#            else:
-#                for model in self.eq:
-#                    if hasattr(self.eq[model], 'run_multistep_to_pandas'):
-#                        mstep_fc = self.eq[model].run_multistep_to_pandas
-#                        m_df = mstep_fc(dt_out, max_t=t, out_vars=out_vars)
-##                        m_df = m_df.rename(index={orig:model+'_'+orig 
-##                                             for orig in m_df.index.get_level_values('model')})
-#                        out.append(m_df)
-#                        
-#        df = pd.concat(out, axis=1)
-#        return df
-
     def df_value_t(self, out_vars):
         import pandas as pd
         def get_this_model_step(name):

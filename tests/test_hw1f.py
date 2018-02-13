@@ -79,10 +79,14 @@ class hw1f_leakage_tests(unittest.TestCase):
         del means['dW']
         rates = np.stack([means['Bond_'+str(i)].values**(-1/i)-1 
                                       for i in range(1,41)], axis=0)
-        self.assertTrue(np.allclose(rates.mean(), 0.02, atol=0.001))
-        self.assertTrue(np.allclose(rates.mean(axis=0), 0.02, atol=0.003))
-        self.assertTrue(np.allclose(rates.mean(axis=1), 0.02, atol=0.003))
-        self.assertTrue(np.allclose(rates, 0.02, atol=0.005))
+        with self.subTest():
+            self.assertTrue(np.allclose(rates.mean(), 0.02, atol=0.001))
+        with self.subTest():
+            self.assertTrue(np.allclose(rates.mean(axis=0), 0.02, atol=0.003))
+        with self.subTest():
+            self.assertTrue(np.allclose(rates.mean(axis=1), 0.02, atol=0.003))
+        with self.subTest():
+            self.assertTrue(np.allclose(rates, 0.02, atol=0.005))
         
         
 class hw1f_sigma_calibration_tests(unittest.TestCase):    

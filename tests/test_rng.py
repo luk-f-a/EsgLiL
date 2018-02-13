@@ -133,7 +133,7 @@ class MCMV_IndWienerIncr_Rng_dask_test(unittest.TestCase):
     def setUp(self):
         self.rng = rng.MCMVIndWienerIncr(dims=2, sims_outer=5000, sims_inner=100,
                                      mean=0, delta_t=1/4, mcmv_time=1,
-                                     generator='mc-dask', n_jobs=2)
+                                     generator='mc-dask', dask_chunks=2)
         cov = np.array([[1,0.7],[0.7,1]])
         self.corr_norm =  rng.CorrelatedRV(rng=self.rng, input_cov=np.eye(2,2),
                                            target_cov=cov)
