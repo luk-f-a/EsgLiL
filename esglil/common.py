@@ -5,7 +5,25 @@ Created on Wed Dec  6 22:16:19 2017
 
 @author: luk-f-a
 """
-
+try:
+    import numexpr as ne
+except ModuleNotFoundError:
+    pass
+except:
+    raise
+    
+def value(x, input_name):
+    if input_name == 'self_1':
+        return x.value_t
+    else:
+        #print(input_name, type(getattr(x, input_name)), isinstance(getattr(x, input_name), Variable) )
+        if isinstance(getattr(x, input_name), Variable):
+            return getattr(x, input_name).value_t
+        elif isinstance(getattr(x, input_name), VariableView):
+            return getattr(x, input_name)()
+        else:
+            return getattr(x, input_name) 
+        
 class ValueDict(dict):
     def __getitem__(self, key):
         if isinstance(key, float) or len(key)==1:
@@ -202,6 +220,35 @@ class SDE(Variable):
     def __call__(self):
         return self.value_t
     
+    def _inputs_to_dict(self, ex, local_vars):
+        local_dict = {}
+        for inp in ex.input_names:
+            try:
+                local_dict[inp] = value(self, inp)
+            except AttributeError:
+                local_dict[inp] = local_vars[inp]    
+            except:
+                raise
+        return local_dict
+    
+    def _evaluate_ne(self, ne_ex, local_vars={}, out_var=None):
+        assert isinstance(ne_ex, str)
+        fc = ne.NumExpr(ne_ex)
+        local_dict = self._inputs_to_dict(fc, local_vars)
+        args = ne.necompiler.getArguments(fc.input_names, local_dict=local_dict)
+        if out_var is None:
+            return fc(*args, out=None, order='K', casting='safe', ex_uses_vml=False)
+        else:
+            out = getattr(self, out_var)
+            try:
+                fc(*args, out=out, order='K', casting='safe', ex_uses_vml=False)
+            except:
+                print(args, fc.input_names)
+                raise
+            
+        
+        
+                
 class TimeDependentParameter(Variable):
     __slots__ = ('f', 'value_t')
      
@@ -228,3 +275,6 @@ class TimeDependentParameter(Variable):
 #        
 #    def __call__(self):
 #        return self.out
+        
+   
+    
