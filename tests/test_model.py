@@ -98,7 +98,8 @@ class test_MCMV_hw(unittest.TestCase):
         errors = mean_cash.stack()-mean_bond.stack()
         test = np.allclose(errors, 0, atol=0.01)
         if not test:
-            print(errors.abs().groupby(level='time').max())
+            pass
+#            print(errors.abs().groupby(level='time').max())
         self.assertTrue(test)
         resource.setrlimit(rsrc, (8*1024**3, -1))        
         
@@ -135,7 +136,7 @@ class test_MCMV_hw(unittest.TestCase):
         
 class test_MCMV_gbm(unittest.TestCase):
     def setUp(self):
-        self.delta_t = 1/50
+        self.delta_t = 1/250
         dW = rng.NormalRng(dims=2, sims=10, mean=[0], cov=[[self.delta_t]])
         S = GeometricBrownianMotion(mu=0.02, sigma=0.2, dW=dW[0])
         C = DeterministicBankAccount(r=0.02)
@@ -158,10 +159,13 @@ class test_MCMV_gbm(unittest.TestCase):
 #        mean = [(1/cf.xs('C', level='model', axis=1)[mat]).mean() 
 #                for mat in range(1,41)]
         mean_cash = (df_full_run.xs('S', level='model', axis=1)/df_full_run.xs('C', level='model', axis=1)).groupby(level='outer_sim').mean()
-        print(mean_cash)
+#        print(mean_cash)
         c_1 = df_full_run.xs(1, level='time', axis=1)['C'].values
         mean_bond = df_full_run.xs(1, level='time', axis=1).div(c_1, axis='index').groupby(level='outer_sim').mean()
-        print(mean_bond)
+#        print(mean_bond)
+        for col in mean_cash.columns.tolist():
+            with self.subTest(time=col):
+                self.assertTrue(np.allclose(mean_cash[col].values, mean_bond['S'].values, rtol=0.01))
                 
 if __name__ == '__main__':
     import resource
