@@ -10,7 +10,8 @@ from esglil.common import SDE
 import numexpr as ne
 
 class GeometricBrownianMotion(SDE):
-    """class for Geometric Brownian Motion model of equity returns
+    """class for Geometric Brownian Motion model of equity returns with an
+    Euler scheme
         dS/S = mu*dt + sigma*dW
      Parameters
     ----------
@@ -39,12 +40,10 @@ class GeometricBrownianMotion(SDE):
     def run_step(self, t):
         self.value_t = self.value_t*(1 + self.mu*(t-self.t_1)+self.dW*self.sigma)
         self.t_1 = t
-        
+
     def run_step_ne(self, t):
-        fc = ne.NumExpr('self_1*(1 + mu*(t-t_1)+dW*sigma)')
-        local_dict = self._inputs_to_dict(fc, locals())
-        args = ne.necompiler.getArguments(fc.input_names, local_dict=local_dict)
-        fc(*args, out=self.value_t, order='K', casting='safe', ex_uses_vml=False)
+        self._evaluate_ne('self_1*(1 + mu*(t-t_1)+dW*sigma)', 
+                          local_vars={'t': t}, out_var='value_t')
         self.t_1 = t
         
         
@@ -82,3 +81,7 @@ class GBM_exact(SDE):
     def run_step(self, t):
         self.value_t = self.s_zero*np.exp((self.mu-0.5*self.sigma**2)*t+self.W*self.sigma)
         return self
+    
+    def run_step_ne(self, t):
+        self._evaluate_ne('s_zero*exp(mu-0.5*sigma**2)*t+W*sigma', 
+                          local_vars={'t': t}, out_var='value_t')
