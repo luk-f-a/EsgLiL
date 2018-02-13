@@ -392,7 +392,12 @@ class HullWhite1fShortRate(SDE):
         self._yt = self._yt + self.dW*self.sigma-self.a*self._yt*(t-self.t_1)
         self.value_t = self.B + self._yt        
         self.t_1 = t
-    
+
+    def run_step_ne(self, t):
+        self._evaluate_ne('_yt+dW*sigma-a*_yt*(t-t_1)',  
+                          local_vars={'t': t}, out_var='_yt')
+        self._evaluate_ne('B+_yt', out_var='value_t')
+        self.t_1 = t    
 
 class HullWhite1fBondPrice_WC(SDE):
     """class for (1 Factor) Hull White model of short interest rate
@@ -439,6 +444,11 @@ class HullWhite1fBondPrice_WC(SDE):
         self.value_t = self.value_t * (1 + self.r*(t-self.t_1)
                                  +self.sigma/self.a*(1-np.exp(-self.a*(self.T-t)))*(self.dW*1))      
 
+        self.t_1 = t
+
+    def run_step_ne(self, t):
+        self._evaluate_ne('self_1*(1+r*(t-t_1)+sigma/a*(1-exp(-a*(T-t)))*dW',
+                                   local_vars={'t': t}, out_var='value_t')
         self.t_1 = t
         
 class HullWhite1fBondPrice(SDE):
@@ -496,6 +506,25 @@ class HullWhite1fBondPrice(SDE):
         self.value_t = np.exp(-C*self.r+A)
         self.t_1 = t
 
+    def run_step_ne(self, t):
+        C = 1/self.a*(1-np.exp(-self.a*(self.T-t)))
+        A = (np.log(self.P_0(self.T)/self.P_0(t))
+            +self.f(t)*C
+            -self.sigma**2/4/self.a*(1-np.exp(-2*self.a*t))*C**2)
+        self._evaluate_ne('exp(-C*r+A)',
+                          local_vars={'t': t,'C':C,'A':A},
+                          out_var='value_t')
+
+#        self._evaluate_ne('exp(-(1/a*(1-exp(-a*(T-t))))*r'
+                           
+#                               '+(log(P_0_T/P_0_t)+f_t*(1/a*(1-exp(-a*(T-t))))-'
+#                               'sigma**2/4/a*(1-exp(-2*a*t))*(1/a*(1-exp(-a*(T-t))))**2))'
+#                          local_vars={'t': t,'P_0_T':self.P_0(self.T),
+#                                      'P_0_t':self.P_0(t), 'f_t': self.f(t)},
+#                          out_var='value_t')
+        self.t_1 = t
+        
+        
 class HullWhite1fConstantMaturityBondPrice(SDE):
     """class for (1 Factor) Hull White model of short interest rate
     This class implements the bond prices for time to maturity tau (instead of
@@ -559,6 +588,17 @@ class HullWhite1fConstantMaturityBondPrice(SDE):
                                     in zip(self.tau[:,0], np.exp(-C*self.r+A))})
         self.t_1 = t
 
+    def run_step_ne(self, t):
+        C = self.C
+        A = self._evaluate_ne('(log(P_0_T/P_0_t)+f_t*C-'
+                               'sigma**2/4/a*(1-exp(-2*a*t))*C**2)',  
+                          local_vars={'t': t,'P_0_T':self.P_0(self.T),
+                                      'P_0_t':self.P_0(self.t), 'f_t': self.f(t),
+                                      'C':C})
+        self.value_t = ValueDict({float(t):bond for t, bond 
+                                    in zip(self.tau[:,0], np.exp(-C*self.r+A))})
+        self.t_1 = t
+
         
 class HullWhite1fCashAccount(SDE):
     """class for (1 Factor) Hull White model of short interest rate
@@ -596,9 +636,14 @@ class HullWhite1fCashAccount(SDE):
         self.value_t = self.value_t*(1+self.r*(t-self.t_1))
         self.t_1 = t
 
- 
+    def run_step_ne(self, t):
+        self._evaluate_ne('self_1*(1+r*(t-t_1))',  
+                          local_vars={'t': t}, out_var='value_t')
+        self.t_1 = t
+        
+        
 class DeterministicBankAccount(SDE):
-    """for discounting under deterministic interest rates
+    """for discounting under deterministic (constant) interest rates
     """
     __slots__ = ('r')
     
