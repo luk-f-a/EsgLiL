@@ -31,11 +31,10 @@ class Rng(Variable):
         #self.value_t = np.zeros(shape=(dims, sims))
                 
     def run_step(self, t):
-        #self.value_t[...] = self.generate()
-        self.value_t = self.generate()
-        
-    def run_step_ne(self, t):
-        self.run_step(t)
+        if t == 0:
+            self.initialize()
+        else:
+            self.value_t = self.generate()
         
     def generate(self):
         """Implement here the code to provide the next iteration of the
@@ -43,6 +42,12 @@ class Rng(Variable):
         """
         raise NotImplementedError
   
+    def initialize(self):
+        self.value_t = np.zeros(shape=(self.dims, self.sims)).squeeze()
+        
+    def run_step_ne(self, t):
+        self.run_step(t)
+ 
 
 
 class UniformRng(Rng):
@@ -104,6 +109,7 @@ class NormalRng(Rng):
                                                size=self.sims,
                                                check_valid='raise').T
 #        print(out.squeeze()[:2])
+#        print(out)
         return out.squeeze()
 
  
