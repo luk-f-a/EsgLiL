@@ -61,7 +61,7 @@ class MultithreadedRNG(object):
 
 
 class BackgroundRNGenerator(threading.Thread):
-    def __init__(self, n, threads, max_prefetch=1):
+    def __init__(self, n, seed=None, threads=1, max_prefetch=1):
         """
         This function transforms generator into a background-thead generator.
         :param generator: generator or genexp or any
@@ -78,7 +78,7 @@ class BackgroundRNGenerator(threading.Thread):
         """
         threading.Thread.__init__(self)
         self.queue = Queue.Queue(max_prefetch)
-        self.generator = MultithreadedRNG(n, threads=threads)
+        self.generator = MultithreadedRNG(n, seed=seed, threads=threads)
         self.daemon = True
         self.start()
 

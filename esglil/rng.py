@@ -333,7 +333,7 @@ class MCMVIndWienerIncr(Rng):
                  
     def __init__(self,  dims, sims_outer, sims_inner, mean, delta_t, 
                  mcmv_time, fixed_inner_arrival=True, generator='mc-numpy',
-                 n_jobs=1, max_prefetch=1, dask_chunks=1):
+                 n_jobs=1, max_prefetch=1, dask_chunks=1, seed=None):
         Rng.__init__(self, dims, sims_outer*sims_inner)
         self.mean = mean
         self.sims_inner = sims_inner
@@ -347,17 +347,18 @@ class MCMVIndWienerIncr(Rng):
         self.multithr_generator = None
         if generator == 'mc-dask':
             import dask.array as da
+            np.random.seed(seed)
             chunks = int((sims_outer * sims_inner)/dask_chunks)
             self.chunks = chunks #chunks
             self.dask_generator = lambda sims:da.random.normal(mean, np.sqrt(delta_t), 
                              size=(dims, sims), chunks=chunks)
         if generator == 'mc-multithreaded':
-            rgen = MultithreadedRNG(dims*sims_outer * sims_inner, threads=n_jobs)
+            rgen = MultithreadedRNG(dims*sims_outer * sims_inner, seed=seed, threads=n_jobs)
             std = np.sqrt(delta_t)
             self.multithr_generator = lambda sims: (mean+std*rgen.fill().values).reshape((dims, sims))
 
         if generator == 'mc-multithreaded-background':
-            rgen = BackgroundRNGenerator(dims*sims_outer * sims_inner,
+            rgen = BackgroundRNGenerator(dims*sims_outer * sims_inner, seed=seed,
                                          threads=n_jobs, max_prefetch=max_prefetch)
             std = np.sqrt(delta_t)
             self.multithr_generator = lambda sims: (mean+std*rgen.generate()).reshape((dims, sims))
@@ -374,6 +375,7 @@ class MCMVIndWienerIncr(Rng):
             sys.path.append(os.path.join(parent(parent(parent(parent(__file__)))), 'ng-numpy-randomstate'))
             
             from randomstate1.dask.random import normal as xsh128_normal
+            randomstate1.prng.xoroshiro128plus.RandomState(seed)
             self.generator = lambda sims:xsh128_normal(mean, np.sqrt(delta_t), 
                              size=(dims, sims), chunks=chunks) 
             
