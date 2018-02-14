@@ -168,10 +168,10 @@ class Model(object):
             for model in self.eq:
                 if isinstance(self.eq[model], Model):
                     dict_out = self.eq[model].run_multistep_to_dict(dt_out, 
-                           self.clock, out_vars=out_vars)
+                           self.clock, out_vars=out_vars, use_numexpr=use_numexpr)
                     out.update(dict_out)
                 else:
-                    if use_numexpr:
+                    if use_numexpr and hasattr(self.eq[model], 'run_step_ne'):
                         self.eq[model].run_step_ne(float(self.clock))
                     else:
                         self.eq[model].run_step(float(self.clock))
