@@ -495,6 +495,10 @@ class WienerProcess(SDE):
 
     def run_step(self, t):
         self.value_t = self.dW + self.value_t
+
+    def run_step_ne(self, t):
+        self._evaluate_ne('self_1+dW', out_var='value_t')        
+
    
 class CorrelatedRV(SDE):
     """class for correlating independent variables
@@ -527,7 +531,16 @@ class CorrelatedRV(SDE):
             self.value_t = da.from_array(self.m, chunks=1000)@self.rng()            
         else:
             self.value_t = self.m@self.rng()
-        
+
+    def run_step_ne(self, t):
+        """
+        This function does not actually use numexpr because the dot product
+        is provided by BLAS which is already optimized. However, here we use
+        the out parameter which follows the logic of other run_step_ne, while
+        run_step normally creates copies. Also run_step_ne can rely on 
+        value_t having been initialized to the proper size
+        """
+        np.dot(self.m, self.rng(), out=self.value_t)
     
 class PreCalculatedFeed(SDE):
     """class for feeding a precalculated stream (usually quadrature points 

@@ -220,7 +220,7 @@ class SDE(Variable):
     def __call__(self):
         return self.value_t
     
-    def _inputs_to_dict(self, ex, local_vars):
+    def _inputs_to_dict_old(self, ex, local_vars):
         local_dict = {}
         for inp in ex.input_names:
             try:
@@ -231,8 +231,11 @@ class SDE(Variable):
                 raise
         return local_dict
     
-    def _evaluate_ne(self, ne_ex, local_vars={}, out_var=None):
+    def _evaluate_ne_old(self, ne_ex, local_vars={}, out_var=None):
+        """This is copy of 
+        """
         assert isinstance(ne_ex, str)
+        
         fc = ne.NumExpr(ne_ex)
         local_dict = self._inputs_to_dict(fc, local_vars)
         args = ne.necompiler.getArguments(fc.input_names, local_dict=local_dict)
@@ -245,8 +248,29 @@ class SDE(Variable):
             except:
                 print(args, fc.input_names)
                 raise
-            
-        
+
+    def _inputs_to_dict(self):
+        from itertools import chain
+        slots = chain.from_iterable(getattr(cls, '__slots__', []) 
+                                        for cls in self.__class__.__mro__)
+        slot_dict = {name: value(self, name) for name in slots if hasattr(self, name)}
+        slot_dict.update({'self_1': self.value_t})
+        return slot_dict
+    
+    def _evaluate_ne(self, ne_ex, local_vars={}, out_var=None):
+        """This is copy of 
+        """
+        assert isinstance(ne_ex, str)
+        local_vars.update(self._inputs_to_dict())
+        if out_var is None:
+            return ne.evaluate(ne_ex, local_dict=local_vars)
+        else:
+            out = getattr(self, out_var)
+            try:
+                ne.evaluate(ne_ex, local_dict=local_vars, out=out)        
+            except:
+                print('here')
+                raise
         
                 
 class TimeDependentParameter(Variable):
