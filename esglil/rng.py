@@ -340,7 +340,7 @@ class MCMVIndWienerIncr(Rng):
         self.sims_outer = sims_outer
         self.mcmv_time = mcmv_time
         self.fixed_arrival = fixed_inner_arrival
-
+        np.random.seed(seed)
         self.generator = lambda sims:np.random.normal(mean, np.sqrt(delta_t), 
                          size=(dims, sims))   
         self.dask_generator = None
@@ -386,7 +386,9 @@ class MCMVIndWienerIncr(Rng):
     
     def run_step(self, t):
         #self.value_t[...] = self.generate()
-        if t <= self.mcmv_time:
+        if t == 0:
+            self.initialize()
+        elif t <= self.mcmv_time:
             rn = self.generate(self.sims_outer)
             self.value_t  = np.tile(rn, [1,self.sims_inner]).squeeze()
         else:
@@ -401,6 +403,7 @@ class MCMVIndWienerIncr(Rng):
         """
         self._check_valid_params()
         out = self.generator(sims)
+        
 #        print(out.squeeze()[:2])
         return out.squeeze()
     
