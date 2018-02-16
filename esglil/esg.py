@@ -32,23 +32,26 @@ class Model(object):
     the inner Model.
     While time is passing inside the inside Model
     """
-    __slots = ['eq', 'clock', 'dense_clock', 'dt_sim', 'is_model_loop']    
+    __slots = ['eq', 'clock', 'dense_clock', 'dt_sim', 'is_model_loop', 'initialized']    
     def __init__(self, dt_sim, **models):
         self.eq = models
         self.clock = 0
         self.dense_clock = 0
         self.dt_sim = float_to_fraction(dt_sim)
+        self.initialized = False
         for eq in models:
             if hasattr(eq, 'dt_sim'):
                 assert eq.dt_sim < dt_sim, "Cannot add modelloop with larger timestep"
         
     def initialize(self):
-        self.run_step(0)
+        if not self.initialized:
+            self.run_step(0)
         
     def run_step(self, t=None):
         if t is None:
             steps = 1
         elif t == 0:
+            self.initialized = True
             steps = 1
         else:
             steps = int(round((t-self.clock)/self.dt_sim,0))
@@ -57,8 +60,6 @@ class Model(object):
             if t > 0:
                 self.clock += self.dt_sim
             for model in self.eq:
-#                if isinstance(self.eq[model], bool):
-#                    print(model)
                 self.eq[model].run_step(float(self.clock))
    
     @property
@@ -175,7 +176,6 @@ class Model(object):
                         self.eq[model].run_step_ne(float(self.clock))
                     else:
                         self.eq[model].run_step(float(self.clock))
-#            if dt_out <= self.dt_sim or ts % float(dt_out/self.dt_sim) == 0:        
             if dt_out <= self.dt_sim or self.clock % float(dt_out) == 0:
                 d_val_t = self.dict_value_t(out_vars)
                 if self.clock in out:

@@ -385,7 +385,6 @@ class MCMVIndWienerIncr(Rng):
         pass
     
     def run_step(self, t):
-        #self.value_t[...] = self.generate()
         if t == 0:
             self.initialize()
         elif t <= self.mcmv_time:
@@ -403,8 +402,6 @@ class MCMVIndWienerIncr(Rng):
         """
         self._check_valid_params()
         out = self.generator(sims)
-        
-#        print(out.squeeze()[:2])
         return out.squeeze()
     
 class MCMVNormalRng(Rng):
