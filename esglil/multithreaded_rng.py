@@ -17,21 +17,24 @@ import queue as Queue
 import threading
 
 class MultithreadedRNG(object):
-    def __init__(self, n, seed=None, threads=None):
+    def __init__(self, n, seed=None, state=None, threads=None):
         #rs = randomstate.prng.xorshift1024.RandomState(seed)
         import randomstate
+        assert not (seed is not None and state is not None)
         rs = randomstate.prng.xoroshiro128plus.RandomState(seed)
+        self.rs = rs
+        if state is not None:
+            rs.set_state(state)
         if threads is None:
             threads = multiprocessing.cpu_count()
         self.threads = threads
 
         self._random_states = []
-        for _ in range(0, threads-1):
+        for _ in range(threads):
             _rs = randomstate.prng.xoroshiro128plus.RandomState()
             _rs.set_state(rs.get_state())
             self._random_states.append(_rs)
             rs.jump()
-        self._random_states.append(rs)
 
         self.n = n
         self.executor = concurrent.futures.ThreadPoolExecutor(threads)

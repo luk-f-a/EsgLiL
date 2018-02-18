@@ -158,7 +158,7 @@ class Model(object):
     def run_multistep_to_dict(self, dt_out, max_t, out_vars=None, use_numexpr=False):
         if isinstance(out_vars, list):
             out_vars = {var:slice(None) for var in out_vars}
-        if use_numexpr:
+        if use_numexpr and not self.initialized:
             self.initialize()
         dt_out = float_to_fraction(dt_out)
         assert max_t > float(self.clock)

@@ -80,10 +80,9 @@ def esg_e_sr_bonds_cash_2levels(delta_t_l1, delta_t_l2, sims, rho, bond_prices, 
     
     return esg_l2
 
-def get_gbm_hw_nobonds(delta_t, sims, rho, bond_prices, 
+def get_gbm_hw_nobonds(delta_t, sims,  rho=None, bond_prices=None,
                        hw_a = 0.001, hw_sigma = 0.01, gbm_sigma=0.2, 
-                       custom_ind_dw=None,
-                       use_dask=False, dask_chunks=1):
+                       custom_ind_dw=None):
     """Returns an esg model with short rate, cash and equity  
     using a GBM and HW models.
     
@@ -91,29 +90,30 @@ def get_gbm_hw_nobonds(delta_t, sims, rho, bond_prices,
         time delta to use for euler simulation
       
     sims: int
-        amount of simulations to run
+        amount of simulations to run - this is the amount of "flat" sims 
+        or outer sims in a MCMV scheme
     
+    inner_sims: int
+        amount of inner simulations after time 1
+        
     rho: float 
         correlation between HW and GBM Brownian motions.
     
     bond_prices: dictionary {maturity: price}
         prices for notional 1 zero-coupon bonds, ie discount factors.
         
-    use_dask: whether to use dask instead of numpy
-    
-    use_cores: if using dask, how many cores (chunks) should be used.
+    custom_ind_dw: Rng object
+        Use this Rng instead of the default one
+        
     """
     if custom_ind_dw:
+        assert custom_ind_dw.sims==sims
         ind_dW = custom_ind_dw
     else:
-        if use_dask:
-            gen = 'mc-dask'
-        else:
-            gen = 'mc-numpy'
-                
         ind_dW = rng.IndWienerIncr(dims=2, sims=sims, mean=0, delta_t=delta_t,
-                                   generator=gen, dask_chunks=dask_chunks)
-    corr = [[1, rho], [rho, 1]]
+                                   generator='mc-numpy')
+        
+    corr = np.array([[1, rho], [rho, 1]])
     C = np.diag([np.sqrt(delta_t), np.sqrt(delta_t)])
     dep_cov = C@corr@C.T 
     indep_cov = np.diag([delta_t, delta_t])
@@ -133,7 +133,8 @@ def get_gbm_hw_nobonds(delta_t, sims, rho, bond_prices,
 def get_gbm_hw_2levels(delta_t_l1, delta_t_l2, sims, rho, bond_prices, 
                        hw_a = 0.001, hw_sigma = 0.01,
                        gbm_sigma=0.2, const_tau=None, out_bonds=None,
-                       use_dask=False, use_cores=1):
+                       custom_ind_dw=None):
+    
     """Returns an esg model loop with short_rate cash, equity on a more granular
     simulation level and a second level loop with a different delta_t for
     bonds and/or constant maturity bonds using a GBM and HW models.
@@ -155,15 +156,17 @@ def get_gbm_hw_2levels(delta_t_l1, delta_t_l2, sims, rho, bond_prices,
     out_bonds: 1-d array
         maturity of bonds to track at every time step
         
-    use_dask: whether to use dask instead of numpy
+    custom_ind_dw: Rng object
+        Use this Rng instead of the default one
     
-    use_cores: if using dask, how many cores (chunks) should be used.
     """
     assert type(bond_prices) is dict
     B_fc, f, p0 = hw1f_B_function(bond_prices=bond_prices, a=hw_a, sigma=hw_sigma,
                            return_p_and_f=True)
     esg_l1 = get_gbm_hw_nobonds(delta_t_l1, sims, rho, bond_prices, 
-                       hw_a, hw_sigma, gbm_sigma, None, use_dask, use_cores)
+                       hw_a, hw_sigma, gbm_sigma=gbm_sigma, 
+                       custom_ind_dw=custom_ind_dw)
+     
     opt_kwargs = {}
     if const_tau is not None:
         hw_const_bond = HullWhite1fConstantMaturityBondPrice

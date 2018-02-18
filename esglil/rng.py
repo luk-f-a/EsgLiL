@@ -309,6 +309,9 @@ class MCMVIndWienerIncr(Rng):
         mc-numpy: Monte Carlo numpy generator
         mc-dask: Monte Carlo generator that uses dask for parallel calculations
         
+    n_threads: int
+        Number of threads to use for multithreaded generator
+        
     dask_chunks: int
         In how many parts should the simulations be split for dask
         In a Windows machine (even though it had 2 cores), 1 was the best choice
@@ -328,12 +331,12 @@ class MCMVIndWienerIncr(Rng):
         second option is not yet implemented
     """
     __slots__ = ('mean', 'delta_t', 'sims_inner', 'sims_outer', 'mcmv_time',
-                 'fixed_arrival', 'generator', 'dask_generator', 'chunks',
-                 'multithr_generator')
+                 'fixed_arrival', 'generator', 'first_generator', 'chunks',
+                 'second_generator')
                  
     def __init__(self,  dims, sims_outer, sims_inner, mean, delta_t, 
                  mcmv_time, fixed_inner_arrival=True, generator='mc-numpy',
-                 n_jobs=1, max_prefetch=1, dask_chunks=1, seed=None):
+                 n_threads=1, max_prefetch=1, dask_chunks=1, seed=None):
         Rng.__init__(self, dims, sims_outer*sims_inner)
         self.mean = mean
         self.sims_inner = sims_inner
@@ -341,31 +344,43 @@ class MCMVIndWienerIncr(Rng):
         self.mcmv_time = mcmv_time
         self.fixed_arrival = fixed_inner_arrival
         np.random.seed(seed)
-        self.generator = lambda sims:np.random.normal(mean, np.sqrt(delta_t), 
-                         size=(dims, sims))   
-        self.dask_generator = None
-        self.multithr_generator = None
-        if generator == 'mc-dask':
+ 
+        if generator == 'mc-numpy':
+            np.random.seed(seed)
+            self.first_generator = lambda sims:np.random.normal(mean, np.sqrt(delta_t), 
+                         size=(dims, sims))
+            self.second_generator = self.first_generator
+        elif generator == 'mc-dask':
             import dask.array as da
             np.random.seed(seed)
+            self.first_generator = lambda sims:np.random.normal(mean, np.sqrt(delta_t), 
+                         size=(dims, sims))
             chunks = int((sims_outer * sims_inner)/dask_chunks)
             self.chunks = chunks #chunks
-            self.dask_generator = lambda sims:da.random.normal(mean, np.sqrt(delta_t), 
+            self.second_generator = lambda sims:da.random.normal(mean, np.sqrt(delta_t), 
                              size=(dims, sims), chunks=chunks)
-        if generator == 'mc-multithreaded':
-            rgen = MultithreadedRNG(dims*sims_outer * sims_inner, seed=seed, threads=n_jobs)
+        elif generator == 'mc-multithreaded':
+            rgen1 = MultithreadedRNG(dims*sims_outer, seed=seed, threads=n_threads)
+            self.first_generator =  lambda sims: (mean+std*rgen1.fill().values).reshape((dims, sims))
+            
             std = np.sqrt(delta_t)
-            self.multithr_generator = lambda sims: (mean+std*rgen.fill().values).reshape((dims, sims))
+            rgen2 = MultithreadedRNG(dims*sims_outer * sims_inner, 
+                                     state=rgen1.rs.get_state(),
+                                     threads=n_threads)
+            self.second_generator = lambda sims: (mean+std*rgen2.fill().values).reshape((dims, sims))
 
-        if generator == 'mc-multithreaded-background':
+        elif generator == 'mc-multithreaded-background':
             rgen = BackgroundRNGenerator(dims*sims_outer * sims_inner, seed=seed,
-                                         threads=n_jobs, max_prefetch=max_prefetch)
+                                         threads=n_threads, max_prefetch=max_prefetch)
             std = np.sqrt(delta_t)
             self.multithr_generator = lambda sims: (mean+std*rgen.generate()).reshape((dims, sims))
 
 
         elif generator == 'mc-dask-fast':
             import dask.array as da
+            self.first_generator = lambda sims:np.random.normal(mean, np.sqrt(delta_t), 
+                         size=(dims, sims))
+
             chunks = int((sims_outer * sims_inner)/dask_chunks)
             self.chunks = chunks #chunks
             import os
@@ -376,9 +391,11 @@ class MCMVIndWienerIncr(Rng):
             
             from randomstate1.dask.random import normal as xsh128_normal
             randomstate1.prng.xoroshiro128plus.RandomState(seed)
-            self.generator = lambda sims:xsh128_normal(mean, np.sqrt(delta_t), 
+            self.second_generator = lambda sims:xsh128_normal(mean, np.sqrt(delta_t), 
                              size=(dims, sims), chunks=chunks) 
-            
+        else:
+            raise ValueError('Unknown generator')
+        self.generator = self.first_generator
     def _check_valid_params(self):
         #TODO: if output is numpy, mean must be size 1 and cov 1x1
         # if output is xr size of mean and cov must agree with svar dim
@@ -391,10 +408,7 @@ class MCMVIndWienerIncr(Rng):
             rn = self.generate(self.sims_outer)
             self.value_t  = np.tile(rn, [1,self.sims_inner]).squeeze()
         else:
-            if self.dask_generator is not None:
-                self.generator = self.dask_generator
-            if self.multithr_generator is not None:
-                self.generator = self.multithr_generator
+            self.generator = self.second_generator
             self.value_t  = self.generate(self.sims_outer*self.sims_inner)
             
     def generate(self, sims):
@@ -402,6 +416,7 @@ class MCMVIndWienerIncr(Rng):
         """
         self._check_valid_params()
         out = self.generator(sims)
+#        print(np.cov(out))
         return out.squeeze()
     
 class MCMVNormalRng(Rng):
@@ -478,6 +493,7 @@ class MCMVNormalRng(Rng):
                                                size=sims,
                                                check_valid='raise').T
 #        print(out.squeeze()[:2])
+#        print(np.cov(out))
         return out.squeeze()
     
     
