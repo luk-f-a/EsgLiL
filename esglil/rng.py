@@ -145,12 +145,13 @@ class IndWienerIncr(Rng):
     __slots__ = ('mean', 'delta_t', 'generator')
                  
     def __init__(self,  dims, sims, mean=0, delta_t=1, generator='mc-numpy',
-                 dask_chunks=1):
+                 dask_chunks=1, seed=None, n_threads=1):
         Rng.__init__(self, dims, sims)
         
         assert generator in ('mc-numpy', 'mc-dask', 'sobol-np', 'mc-dask-xsh128+')
         self.mean = mean
         self.delta_t = delta_t
+        
         if generator == 'mc-dask':
             import dask.array as da
             self.generator = lambda :da.random.normal(mean, np.sqrt(delta_t), 
@@ -162,13 +163,20 @@ class IndWienerIncr(Rng):
             s_gen = sobol_normal(dims, sims)
             self.generator = lambda : (mean+np.sqrt(delta_t)*next(s_gen)).T
 
-        elif generator == 'mc-dask-xsh128+':
+        elif generator == 'mc-dask-fast':
             import sys
             sys.path.append('/home/lucio/mypyprojects/ng-numpy-randomstate/')
             from randomstate1.dask.random import normal as xsh128_normal
             self.generator = lambda :xsh128_normal(mean, np.sqrt(delta_t), 
                              size=(dims, sims), chunks=int(sims/dask_chunks))            
-        
+
+        elif generator == 'mc-multithreaded':
+            rgen = MultithreadedRNG(dims*sims, seed=seed, threads=n_threads)
+            std = np.sqrt(delta_t)
+            self.generator =  lambda sims: (mean+std*rgen.fill().values).reshape((dims, sims))
+         
+            
+      
     def _check_valid_params(self):
         #TODO: if output is numpy, mean must be size 1 and cov 1x1
         # if output is xr size of mean and cov must agree with svar dim
@@ -361,9 +369,10 @@ class MCMVIndWienerIncr(Rng):
                              size=(dims, sims), chunks=chunks)
         elif generator == 'mc-multithreaded':
             rgen1 = MultithreadedRNG(dims*sims_outer, seed=seed, threads=n_threads)
+            std = np.sqrt(delta_t)
             self.first_generator =  lambda sims: (mean+std*rgen1.fill().values).reshape((dims, sims))
             
-            std = np.sqrt(delta_t)
+            
             rgen2 = MultithreadedRNG(dims*sims_outer * sims_inner, 
                                      state=rgen1.rs.get_state(),
                                      threads=n_threads)
