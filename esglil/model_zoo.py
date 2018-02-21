@@ -183,9 +183,11 @@ def get_gbm_hw_2levels(delta_t_l1, delta_t_l2, sims, rho, bond_prices,
     esg_l2 = ESG(dt_sim=delta_t_l2, esg_l1=esg_l1, **opt_kwargs)
     return esg_l2
 
-def esg_equity(delta_t, sims, r=0.03, gbm_sigma=0.2, use_dask=False):
+def esg_equity(delta_t, sims, r=0.03, gbm_sigma=0.2, generator='mc-numpy',
+                 dask_chunks=1, seed=None, n_threads=1):
     dW = rng.IndWienerIncr(dims=1, sims=sims, mean=0, delta_t=delta_t,
-                                   use_dask=use_dask, use_cores=1)
+                           generator=generator, dask_chunks=dask_chunks, 
+                           seed=seed, n_threads=n_threads)
     W = rng.WienerProcess(dW)
     S = GeometricBrownianMotion(mu=r, sigma=gbm_sigma, dW=dW)
     esg = ESG(dt_sim=delta_t, dW=dW, W=W, S=S)
@@ -223,7 +225,7 @@ def esg_equity_exact(delta_t, sims, r=0.03, gbm_sigma=0.2):
     W = rng.WienerProcess(dW)
 #    S = GeometricBrownianMotion(mu=r, sigma=gbm_sigma, dW=dW)
     S = GBM_exact(mu=r, sigma=gbm_sigma, W=W)
-    esg = ESG(dt_sim=delta_t,  dW=dW, W=W, S=S)
+    esg = ESG(dt_sim=delta_t, dW=dW, W=W, S=S)
     
     return esg
 
