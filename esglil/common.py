@@ -26,7 +26,7 @@ def value(x, input_name):
         
 class ValueDict(dict):
     def __getitem__(self, key):
-        if isinstance(key, float) or len(key)==1:
+        if isinstance(key, float) or isinstance(key, str) or len(key)==1:
             val = dict.__getitem__(self, key)
         else:
             val = dict.__getitem__(self, key[0])
