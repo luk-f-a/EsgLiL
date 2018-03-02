@@ -9,10 +9,13 @@ import numpy as np
 from esglil.common import TimeDependentParameter, SDE
 from esglil.ir_models import (HullWhite1fShortRate, HullWhite1fCashAccount, 
                               HullWhite1fBondPrice, hw1f_B_function,
-                              HullWhite1fConstantMaturityBondPrice)
+                              HullWhite1fConstantMaturityBondPrice,
+                              ShortRateSimpleAnnualModel,
+                              CashAccountSimpleAnnualModel)
 from esglil.ir_models import DeterministicBankAccount
 from esglil.esg import ESG
-from esglil.equity_models import GeometricBrownianMotion, GBM_exact
+from esglil.equity_models import (GeometricBrownianMotion, GBM_exact,
+                                  EquitySimpleAnnualModel)
 from esglil import rng
 
 def esg_e_sr_bonds_cash(delta_t, sims, rho, bond_prices, hw_a = 0.001, 
@@ -230,3 +233,31 @@ def esg_equity_exact(delta_t, sims, r=0.03, gbm_sigma=0.2):
     return esg
 
 
+def esg_simple_annual_model(sims, generator, custom_z=None):
+    
+    if custom_z:
+        assert custom_z.sims==sims
+        ind_z = custom_z
+    else:
+        ind_z = rng.IndWienerIncr(dims=2, sims=sims, mean=0, delta_t=1,
+                                   generator=generator)
+        
+    b=0.1
+    a=0.1
+    r_zero = 0.02
+    sigma_e = 0.2
+    sigma_r = 0.002
+    rho = 0.5
+    corr = np.array([[1, rho], [rho, 1]])
+    C = np.diag([1, 1])
+    dep_cov = C@corr@C.T 
+    indep_cov = np.diag([1, 1])
+    N = rng.CorrelatedRV(rng=ind_z, input_cov=indep_cov , target_cov=dep_cov)
+    
+    r = ShortRateSimpleAnnualModel(b=b, a=a, sigma=sigma_r, r_zero=r_zero,
+                                   N=N[0])
+    C = CashAccountSimpleAnnualModel(r=r)
+    S = EquitySimpleAnnualModel(r=r, sigma=sigma_e, N=N[1], s_zero=100)
+    esg = ESG(dt_sim=1, ind_Z=ind_z, N=N, r=r, cash=C,  S=S)
+    return esg
+    
