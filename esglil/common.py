@@ -32,6 +32,9 @@ class ValueDict(dict):
             val = dict.__getitem__(self, key[0])
         return val
     
+    def __setitem__(self, key):
+        raise ValueError("Instead of setting a value, create a new object")
+        
 class Variable(object):
     __slots__ = []
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
