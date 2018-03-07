@@ -9,7 +9,7 @@ Created on Tue Nov  7 22:53:54 2017
 import numpy as np
 from scipy.interpolate import make_interp_spline
 from esglil.common import SDE, ValueDict
-
+from esglil.rng import CorrelatedRV
 from collections import Iterable
 
 def hw1f_sigma_calibration(bond_prices, swaption_prices, a):
@@ -718,3 +718,125 @@ class CashAccountSimpleAnnualModel(SDE):
     def run_step_ne(self, t):
         self._evaluate_ne('self_1*exp(r)',   out_var='value_t')
         self.t_1 = t
+        
+
+class HWyearlyStochasticDriver(SDE):
+    """class to generate the correlated normal variables
+    needed for exact yearly simulation of short rate and cash account
+    
+    dr(t)=alpha*[b(t)-r(t)]dt+sigma*dW(t)
+    
+    Parameters
+    ----------
+    
+    rng: random number generator
+        multivariate standard normal variables, with 2 independent dimensions
+        
+    sigma_hw: float
+        hull white volatility paramenter
+        
+    alpha_hw: float
+        hull white alpha mean reversion speed parameter 
+    """
+    def __new__(cls, rng, sigma_hw, alpha_hw):
+        sigma_r = sigma_hw**2/2/alpha_hw*(1-np.exp(-2*alpha_hw))
+        sigma_y = (sigma_hw**2/alpha_hw**2*
+                       (1+1/2/alpha_hw*(1-np.exp(-2*alpha_hw))
+                        +2/alpha_hw*(np.exp(-alpha_hw)-1)))
+        sigma_r_y = (sigma_hw**2/alpha_hw**2*
+                       (1+np.exp(-2*alpha_hw)
+                        +2*np.exp(-alpha_hw)))
+        rho_r_y = sigma_r_y/sigma_r/sigma_y
+        return CorrelatedRV(rng, input_cov=np.diag([1,1]), 
+                            target_cov=np.array([[1,rho_r_y], [rho_r_y,1]]))
+        
+        
+class HWyearlyShortRate(SDE):
+    __slots__ = ['sigma_r', 'mu_r', 'alpha', 'Z']
+    def __init__(self, mu_r, sigma_hw, alpha_hw, r_zero, Z):
+        self.mu_r =mu_r
+        self.sigma_r = sigma_hw**2/alpha_hw**2*(1-np.exp(-2*alpha_hw))
+        self.alpha = alpha_hw
+        self.value_t = r_zero
+        self.Z = Z
+        self.t_1 = 0
+        
+    def run_step(self, t):
+        self.value_t = (np.exp(-self.alpha)*self.value_t+self.mu_r(self.t_1)
+                        +self.sigma_r*self.Z)
+        self.t_1 = t
+        
+class HWyearlyCashAccount(SDE):
+    __slots__ = ['sigma_y', 'mu_y', 'alpha', 'Y_t', 'Z']
+    def __init__(self, mu_y, sigma_hw, alpha_hw, r_zero, Z):
+        self.mu_y =mu_y
+        self.sigma_y = (sigma_hw**2/alpha_hw**2*
+                       (1+1/2/alpha_hw*(1-np.exp(-2*alpha_hw))
+                        +2/alpha_hw*(np.exp(-alpha_hw)-1)))
+        self.value_t = 1
+        self.Y_t = 0
+        self.Z = Z
+        self.t_1 = 0
+        
+    def run_step(self, t):
+        self.Y_t = self.Y_t+self.mu_y(self.t_1)+self.sigma_y*self.Z
+        self.value_t = np.exp(self.Y_t)
+        self.t_1 = t
+        
+class HWyearlyBondPrice(SDE):
+    """class for (1 Factor) Hull White model of short interest rate
+    This class implements the bond prices for maturity T
+    P(t, T) = exp[-A(t,T)*r(t) + C(t,T)]
+         
+    for the Hull White model dr(t)=alpha*[b(t)-r(t)]dt+sigma*dW(t)
+    according to Glasserman's book formulae
+    
+    with 
+    
+    A(t,T)=1/alpha*(1-exp(-alpha(T-t)))
+    
+    C(t,T)=-alpha*H(t, T)+ sigma**2*alpha**2*[(T-t)+1/2/alpha*(1-exp(-2*alpha*(T-t)))+
+                                             +2/alpha*(exp(-alpha(T-t))-1)]
+   
+     Parameters
+    ----------
+
+    alpha: scalar
+        mean reversion speed
+    
+    sigma : scalar
+        standard deviation
+
+    T: scalar or array
+        Bond maturity
+        
+    H(t, T): callable
+        double integral of exp(-alpha(u-s))*b(s)
+    """    
+    __slots__ = ('T', 'a', 'sigma', 'r', 'f', 'P_0')
+    
+    def __init__(self, alpha, sigma_hw, r, H, T):
+        self.T = T
+        self.alpha = alpha
+        self.sigma = sigma_hw
+        self.r = r
+        self.H = H
+        self.t_1 = 0
+        self.run_step(0)
+#        self._check_valid_params()
+
+        
+    def run_step(self, t):
+        alpha = self.alpha
+        sigma = self.sigma_hw
+        r = self.r
+        H = self.H   
+        T = self.T
+        
+        A = 1/self.alpha*(1-np.exp(-self.a*(self.T-t)))
+        
+        C = (-self.alpha*H(t, T)+ sigma**2*alpha**2*[(T-t)+1/2/alpha*(1-np.exp(-2*alpha*(T-t)))+
+                                             +2/alpha*(np.exp(-alpha(T-t))-1)])
+        self.value_t = np.exp(-A*r+C)
+        self.t_1 = t
+
