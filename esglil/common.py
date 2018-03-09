@@ -27,13 +27,15 @@ def value(x, input_name):
 
 class ValueDict(dict):
     def __getitem__(self, key):
-        if isinstance(key, float) or len(key) == 1:
+        if isinstance(key, float) or isinstance(key, str) or len(key)==1:
             val = dict.__getitem__(self, key)
         else:
             val = dict.__getitem__(self, key[0])
         return val
-
-
+    
+    def __setitem__(self, key):
+        raise ValueError("Instead of setting a value, create a new object")
+        
 class Variable(object):
     """Base class for variables (deterministic or stochastic) in simulation
     It's basically a wrapper for an object holding the actual values, stored in

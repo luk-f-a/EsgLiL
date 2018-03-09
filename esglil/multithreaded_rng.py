@@ -42,6 +42,7 @@ class MultithreadedRNG(object):
         self.step = np.ceil(n / threads).astype(np.int)
 
     def fill(self):
+        print('rng', self.values.shape)
         def _fill(random_state, out, first, last):
             random_state.standard_normal(out=out[first:last], method='zig')
         futures = {}

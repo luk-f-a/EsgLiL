@@ -85,3 +85,36 @@ class GBM_exact(StochasticVariable):
     def run_step_ne(self, t):
         self._evaluate_ne('s_zero*exp(mu-0.5*sigma**2)*t+W*sigma', 
                           local_vars={'t': t}, out_var='value_t')
+
+class EquitySimpleAnnualModel(SDE):
+    """class for a simple annual model of equity returns
+        
+     Parameters
+    ----------
+     sigma : scalar or SDE
+        standard deviation of gbm
+        
+    s_zero : scalar or SDE
+        initial value of gbm. Defaults to 100.
+        
+    N: stochastic variable or random number generator
+        standar normal variable    
+       
+    """
+    __slots__ = ('r', 'sigma', 'N')   
+    
+    def __init__(self, r, sigma, N, s_zero=100):
+        self.r = r
+        self.sigma = sigma
+        self.N = N
+        self.t_1 = 0
+        self.value_t = s_zero
+        #self._check_valid_params()
+
+    def run_step(self, t):
+        self.value_t = self.value_t*np.exp((self.r-0.5*self.sigma**2)+self.N*self.sigma)
+        return self
+    
+    def run_step_ne(self, t):
+        self._evaluate_ne('self_1*exp(r-0.5*sigma**2)*t+N*sigma', 
+                          out_var='value_t')    
