@@ -6,10 +6,10 @@ Created on Tue Oct 24 20:28:07 2017
 @author: luk-f-a
 """
 import numpy as np
-from esglil.common import SDE
+from esglil.common import StochasticVariable
 import numexpr as ne
 
-class GeometricBrownianMotion(SDE):
+class GeometricBrownianMotion(StochasticVariable):
     """class for Geometric Brownian Motion model of equity returns with an
     Euler scheme
         dS/S = mu*dt + sigma*dW
@@ -47,7 +47,7 @@ class GeometricBrownianMotion(SDE):
         self.t_1 = t
         
         
-class GBM_exact(SDE):
+class GBM_exact(StochasticVariable):
     """class for Geometric Brownian Motion model of equity returns
         calculated from the solution to the SDE (dS/S = mu*dt + sigma*dW)
         as S = S_0*exp((mu-0.5*sigma**2/2)*t+sigma*W) instead of using
