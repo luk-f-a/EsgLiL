@@ -86,7 +86,7 @@ class GBM_exact(StochasticVariable):
         self._evaluate_ne('s_zero*exp(mu-0.5*sigma**2)*t+W*sigma', 
                           local_vars={'t': t}, out_var='value_t')
 
-class EquitySimpleAnnualModel(SDE):
+class EquitySimpleAnnualModel(StochasticVariable):
     """class for a simple annual model of equity returns
         
      Parameters

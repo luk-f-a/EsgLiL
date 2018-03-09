@@ -6,7 +6,7 @@ Created on Sat Dec  9 17:39:15 2017
 @author: luk-f-a
 """
 import numpy as np
-from esglil.common import TimeDependentParameter, SDE
+from esglil.common import TimeDependentParameter, StochasticVariable
 from esglil.ir_models import (HullWhite1fShortRate, HullWhite1fCashAccount, 
                               HullWhite1fBondPrice, hw1f_B_function,
                               HullWhite1fConstantMaturityBondPrice,

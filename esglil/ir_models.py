@@ -8,9 +8,10 @@ Created on Tue Nov  7 22:53:54 2017
 
 import numpy as np
 from scipy.interpolate import make_interp_spline
-from esglil.common import SDE, ValueDict
+from esglil.common import StochasticVariable, ValueDict
 from esglil.rng import CorrelatedRV
 from collections import Iterable
+import sympy as sp
 
 def hw1f_sigma_calibration(bond_prices, swaption_prices, a):
     """Based on zero coupon bond and swaption prices, it will return 
@@ -350,7 +351,7 @@ def hw1f_B_function_dict(bond_prices, a, sigma, return_p_and_f=False):
     else:
         return B
     
-class HullWhite1fShortRate(SDE):
+class HullWhite1fShortRate(StochasticVariable):
     """class for (1 Factor) Hull White model of short interest rate
     This class only implements the short rate
     SDE: dr(t)= b(t)+dy(t)
@@ -399,7 +400,7 @@ class HullWhite1fShortRate(SDE):
         self._evaluate_ne('B+_yt', out_var='value_t')
         self.t_1 = t    
 
-class HullWhite1fBondPrice_WC(SDE):
+class HullWhite1fBondPrice_WC(StochasticVariable):
     """class for (1 Factor) Hull White model of short interest rate
     This class implements the bond prices for maturity T
     SDE: dP(t, T)/P(t,T) = r(t)*dt + sigma/a*(1-exp(-a*(T-t)))*dW
@@ -451,7 +452,7 @@ class HullWhite1fBondPrice_WC(SDE):
                                    local_vars={'t': t}, out_var='value_t')
         self.t_1 = t
         
-class HullWhite1fBondPrice(SDE):
+class HullWhite1fBondPrice(StochasticVariable):
     """class for (1 Factor) Hull White model of short interest rate
     This class implements the bond prices for maturity T
     P(t, T) = exp[-C(t,T)*r(t) + A(t,T)]
@@ -525,7 +526,7 @@ class HullWhite1fBondPrice(SDE):
         self.t_1 = t
         
         
-class HullWhite1fConstantMaturityBondPrice(SDE):
+class HullWhite1fConstantMaturityBondPrice(StochasticVariable):
     """class for (1 Factor) Hull White model of short interest rate
     This class implements the bond prices for time to maturity tau (instead of
     maturity T as the HullWhite1fBondPrice).
@@ -600,7 +601,7 @@ class HullWhite1fConstantMaturityBondPrice(SDE):
         self.t_1 = t
 
         
-class HullWhite1fCashAccount(SDE):
+class HullWhite1fCashAccount(StochasticVariable):
     """class for (1 Factor) Hull White model of short interest rate
     This class implements the cash account
     SDE: dC(t)/C(t) = r(t)*dt
@@ -637,7 +638,7 @@ class HullWhite1fCashAccount(SDE):
         self.t_1 = t
         
         
-class DeterministicBankAccount(SDE):
+class DeterministicBankAccount(StochasticVariable):
     """for discounting under deterministic (constant) interest rates
     """
     __slots__ = ('r')
@@ -650,7 +651,7 @@ class DeterministicBankAccount(SDE):
         self.value_t = np.exp(self.r*t)       
 
 
-class ShortRateSimpleAnnualModel(SDE):
+class ShortRateSimpleAnnualModel(StochasticVariable):
     """class for a simple short rate model
     This class only implements the short rate
     SDE: r(t+1)= ar(t)+b(t)+sigma*N(i+1)
@@ -694,7 +695,7 @@ class ShortRateSimpleAnnualModel(SDE):
         self._evaluate_ne('a*self_1+b+sigma*N)',  out_var='value_t')
         self.t_1 = t    
         
-class CashAccountSimpleAnnualModel(SDE):
+class CashAccountSimpleAnnualModel(StochasticVariable):
     """class for the cash account under the simple annual model
 
    
@@ -720,7 +721,7 @@ class CashAccountSimpleAnnualModel(SDE):
         self.t_1 = t
         
 
-class HWyearlyStochasticDriver(SDE):
+class HWyearlyStochasticDriver(StochasticVariable):
     """class to generate the correlated normal variables
     needed for exact yearly simulation of short rate and cash account
     
@@ -751,7 +752,31 @@ class HWyearlyStochasticDriver(SDE):
                             target_cov=np.array([[1,rho_r_y], [rho_r_y,1]]))
         
         
-class HWyearlyShortRate(SDE):
+class HWyearlyShortRate(StochasticVariable):
+    """class for (1 Factor) Hull White model of short interest rate
+    This class only implements the short rate
+    
+    dr(t)=alpha*[b(t)-r(t)]dt+sigma*dW(t)
+    according to Glasserman's book formulae
+
+    
+     Parameters
+    ----------
+        
+    mu_r : callable (with t as only argument)
+        mean of the short rate in each period.
+        
+    alpha: scalar or Variable object
+        mean reversion speed
+    
+    sigma_hw : scalar
+        standard deviation
+        
+    Z: random number generator
+        1-d standard normal variable
+    """    
+
+    
     __slots__ = ['sigma_r', 'mu_r', 'alpha', 'Z']
     def __init__(self, mu_r, sigma_hw, alpha_hw, r_zero, Z):
         self.mu_r =mu_r
@@ -766,7 +791,7 @@ class HWyearlyShortRate(SDE):
                         +self.sigma_r*self.Z)
         self.t_1 = t
         
-class HWyearlyCashAccount(SDE):
+class HWyearlyCashAccount(StochasticVariable):
     __slots__ = ['sigma_y', 'mu_y', 'alpha', 'Y_t', 'Z']
     def __init__(self, mu_y, sigma_hw, alpha_hw, r_zero, Z):
         self.mu_y =mu_y
@@ -783,7 +808,8 @@ class HWyearlyCashAccount(SDE):
         self.value_t = np.exp(self.Y_t)
         self.t_1 = t
         
-class HWyearlyBondPrice(SDE):
+        
+class HWyearlyBondPrice(StochasticVariable):
     """class for (1 Factor) Hull White model of short interest rate
     This class implements the bond prices for maturity T
     P(t, T) = exp[-A(t,T)*r(t) + C(t,T)]
@@ -810,17 +836,17 @@ class HWyearlyBondPrice(SDE):
     T: scalar or array
         Bond maturity
         
-    H(t, T): callable
+    h(t, T): callable
         double integral of exp(-alpha(u-s))*b(s)
     """    
     __slots__ = ('T', 'a', 'sigma', 'r', 'f', 'P_0')
     
-    def __init__(self, alpha, sigma_hw, r, H, T):
+    def __init__(self, alpha, sigma_hw, r, h, T):
         self.T = T
         self.alpha = alpha
         self.sigma = sigma_hw
         self.r = r
-        self.H = H
+        self.h = h
         self.t_1 = 0
         self.run_step(0)
 #        self._check_valid_params()
@@ -830,13 +856,106 @@ class HWyearlyBondPrice(SDE):
         alpha = self.alpha
         sigma = self.sigma_hw
         r = self.r
-        H = self.H   
+        h = self.h
         T = self.T
         
         A = 1/self.alpha*(1-np.exp(-self.a*(self.T-t)))
         
-        C = (-self.alpha*H(t, T)+ sigma**2*alpha**2*[(T-t)+1/2/alpha*(1-np.exp(-2*alpha*(T-t)))+
+        C = (-self.alpha*h(t, T)+ sigma**2*alpha**2*[(T-t)+1/2/alpha*(1-np.exp(-2*alpha*(T-t)))+
                                              +2/alpha*(np.exp(-alpha(T-t))-1)])
         self.value_t = np.exp(-A*r+C)
         self.t_1 = t
 
+
+class HWyearlyConstantMaturityBondPrice(StochasticVariable):
+    """class for (1 Factor) Hull White model of short interest rate
+    This class implements the bond prices for time to maturity tau (instead of
+    maturity T as the HullWhite1fBondPrice).
+    The class is a more efficient (if slightly over-specialized) way of
+    tracking a bond portfolio without having to calculate the price of every
+    possible bond as the HullWhite1fBondPrice class does.
+    
+    P(t, T) = exp[-A(t,T)*r(t) + C(t,T)]
+
+    tau = T - t
+         
+    for the Hull White model dr(t)=alpha*[b(t)-r(t)]dt+sigma*dW(t)
+    according to Glasserman's book formulae
+    
+    with 
+    
+    A(t,T)=1/alpha*(1-exp(-alpha(T-t)))
+    
+    C(t,T)=-alpha*H(t, T)+ sigma**2*alpha**2*[(T-t)+1/2/alpha*(1-exp(-2*alpha*(T-t)))+
+                                             +2/alpha*(exp(-alpha(T-t))-1)]
+   
+     Parameters
+    ----------
+
+    a: scalar
+        mean reversion speed
+    
+    sigma : scalar
+        standard deviation
+
+    tau: scalar or array
+        Bond maturity
+        
+    f: function
+        fm(0,t), instantaneous forward rate at time 0 observed (market) and interpolated
+    
+    P_0: function
+        P(0,T), bond prices at time 0 observed (market) and interpolated
+    
+    r: stochastic variable
+        short rate
+    """    
+    __slots__ = ('tau', 'A', 'alpha', 'sigma', 'r', 'f', 'P_0', 'h')
+    
+    def __init__(self, alpha, sigma, r, P_0, tau, h):
+        self.tau = tau
+        self.alpha = alpha
+        self.sigma = sigma
+        self.r = r
+        self.value_t = ValueDict({float(t):P_0(t) for t in tau[:,0]})
+        self.P_0 = P_0
+        self.t_1 = 0
+        self.A = 1/alpha*(1-np.exp(-alpha*tau))
+#        self._check_valid_params()
+
+        
+    def run_step(self, t):
+        alpha = self.alpha
+        sigma = self.sigma
+        r = self.r
+        h = self.h  
+        T = self.tau + t
+        A = self.A
+        
+        C = (-self.alpha*h(t, T)+ sigma**2*alpha**2*[(T-t)+1/2/alpha*(1-np.exp(-2*alpha*(T-t)))+
+                                             +2/alpha*(np.exp(-alpha(T-t))-1)])
+
+        bond_prices = np.exp(-A*r+C)       
+        self.value_t = ValueDict({float(t):bond for t, bond 
+                                    in zip(self.tau[:,0], bond_prices)})
+        self.t_1 = t
+
+
+def get_HWyearly_g_fc(b_s, t_points, T_points, alpha):
+    """
+    return g(t, T) evaluated at the points as provided
+    
+    paramters
+    ---------
+    b_s: callable with one parameter
+        b parameter in HW model as a function of t
+        
+    
+    """
+    s, T, t = sp.symbols("s T t")
+    piecewise_args = [(b_s(t_), s < t_+1) for t_ in t_points]
+    b = sp.Piecewise(*piecewise_args, (b_s(t_points[-1]), True))
+    g = sp.integrate(sp.exp(-alpha*(T-s))*b, (s, t, T))
+    out = {(t_, T_): float(g.subs(t,t_).subs(T,T_).evalf()) for t_, T_ in zip(t_points, T_points)}
+    return out
+    

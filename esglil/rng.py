@@ -39,7 +39,7 @@ class Rng(Variable):
         raise NotImplementedError
 
     def initialize(self):
-        self.value_t = np.zeros(shape=(self.dims, self.sims)).squeeze()
+        self.value_t = np.zeros(shape=(self.dims, self.sims))
 
     def run_step_ne(self, t):
         self.run_step(t)
@@ -143,7 +143,8 @@ class IndWienerIncr(Rng):
                  dask_chunks=1, seed=None, n_threads=1):
         Rng.__init__(self, dims, sims)
 
-        assert generator in ('mc-numpy', 'mc-dask', 'sobol-np', 'mc-dask-xsh128+')
+        assert generator in ('mc-numpy', 'mc-dask', 'sobol-np', 'mc-dask-fast',
+                             'mc-multithreaded')
         self.mean = mean
         self.delta_t = delta_t
         
@@ -169,7 +170,6 @@ class IndWienerIncr(Rng):
             rgen = MultithreadedRNG(dims*sims, seed=seed, threads=n_threads)
             std = np.sqrt(delta_t)
             self.generator =  lambda sims: (mean+std*rgen.fill().values).reshape((dims, sims))
-         
             
       
     def _check_valid_params(self):
@@ -310,7 +310,7 @@ class MCMVIndWienerIncr(Rng):
             self.initialize()
         elif t <= self.mcmv_time:
             rn = self.generate(self.sims_outer)
-            self.value_t = np.tile(rn, [1,self.sims_inner]).squeeze()
+            self.value_t = np.tile(rn, [1,self.sims_inner])
         else:
             self.generator = self.second_generator
             self.value_t = self.generate(self.sims_outer*self.sims_inner)
@@ -321,7 +321,7 @@ class MCMVIndWienerIncr(Rng):
         self._check_valid_params()
         out = self.generator(sims)
 #        print(np.cov(out))
-        return out.squeeze()
+        return out
 
 class MCMVNormalRng(Rng):
     """class for normal random number generation with
@@ -383,7 +383,7 @@ class MCMVNormalRng(Rng):
         #self.value_t[...] = self.generate()
         if t <= self.mcmv_time:
             rn = self.generate(self.sims_outer)
-            self.value_t = np.tile(rn, [1,self.sims_inner]).squeeze()
+            self.value_t = np.tile(rn, [1,self.sims_inner])
         else:
             self.value_t = self.generate(self.sims_outer*self.sims_inner)
 
@@ -396,7 +396,7 @@ class MCMVNormalRng(Rng):
                                             check_valid='raise').T
 #        print(out.squeeze()[:2])
 #        print(np.cov(out))
-        return out.squeeze()
+        return out
 
 
 class DimMixGenerator(Rng):
@@ -437,7 +437,7 @@ class DimMixGenerator(Rng):
 
     
     
-class WienerProcess(SDE):
+class WienerProcess(StochasticVariable):
     """class for accumulating Wiener increments into a running sum
 
      Parameters

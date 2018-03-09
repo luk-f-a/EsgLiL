@@ -86,7 +86,6 @@ class test_MCMV_hw(unittest.TestCase):
         tuples = list(zip(out, inn))
         index = pd.MultiIndex.from_tuples(tuples, names=['outer_sim', 'inner_sim'])
         df_full_run.index = index
-        resource.setrlimit(rsrc, (-1, -1))
         mean_cash = (1/df_full_run.xs('C', level='model', axis=1)).groupby(level='outer_sim').mean()
 
 
@@ -98,8 +97,8 @@ class test_MCMV_hw(unittest.TestCase):
         errors = mean_cash.stack()-mean_bond.stack()
         test = np.allclose(errors, 0, atol=0.01)
         if not test:
-            pass
-#            print(errors.abs().groupby(level='time').max())
+             print("Errors in MCMV bond pricing", 
+                  errors.abs().groupby(level='time').max())
         self.assertTrue(test)
         resource.setrlimit(rsrc, (8*1024**3, -1))        
         

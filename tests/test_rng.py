@@ -28,7 +28,7 @@ class Uniform_Rng_test_np(unittest.TestCase):
         r_nb = self.rng.generate()
         self.assertEqual(type(r_nb), np.ndarray,
                          'incorrect type')
-        self.assertEqual(r_nb.shape, (10,),
+        self.assertEqual(r_nb.shape, (1, 10),
                          'incorrect shape')
 
 
@@ -162,7 +162,7 @@ class IndWienerIncr_Rng_dask_xorshiro_test(unittest.TestCase):
     def setUp(self):
         self.rng = rng.IndWienerIncr(dims=2, sims=500000,
                                      mean=0, delta_t=1/4, 
-                                     generator='mc-dask-xsh128+', dask_chunks=2)
+                                     generator='mc-dask-fast', dask_chunks=2)
         cov = np.array([[1,0.7],[0.7,1]])
         self.corr_norm =  rng.CorrelatedRV(rng=self.rng, input_cov=np.eye(2,2),
                                            target_cov=cov)

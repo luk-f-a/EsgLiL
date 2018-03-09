@@ -13,8 +13,10 @@ from esglil import rng
 from esglil.esg import ESG
 from esglil.common import TimeDependentParameter
 from esglil import equity_models
-from esglil.ir_models import HullWhite1fShortRate, HullWhite1fBondPrice, HullWhite1fCashAccount
-from esglil import ir_models
+from esglil.ir_models import (HullWhite1fShortRate, HullWhite1fBondPrice, 
+                              HullWhite1fCashAccount, get_HWyearly_g_fc,
+                              HWyearlyShortRate)
+
 import numpy as np
 import pandas as pd
 import datetime
@@ -112,7 +114,30 @@ def equity_stochastic_interest_rate(dt=1, sims=1000):
     esg = ESG(dt_sim=delta_t, dW=dW, B=B, r=r, cash=C, P=P, S=S)
     
     full_run = esg.full_run(dt_out=1, max_t=40)    
-    
+
+def hw_yearly_short_rate(sims=1000):
+
+    Z = rng.NormalRng(dims=1, sims=sims, mean=[0], cov=[[1]])
+
+    alpha = 0.1
+    sigma = 0.01
+    b = 0.01
+    now_ = datetime.datetime.now()
+    g = get_HWyearly_g_fc(b_s=lambda t:b, t_points=range(0,10), 
+                          T_points=range(1,11), alpha=alpha)
+#    print(datetime.datetime.now()-now_)
+    mu = lambda t: alpha*g[(t, t+1)]
+    r = HWyearlyShortRate(mu_r=mu, sigma_hw=sigma, 
+                          alpha_hw=alpha, r_zero=b, Z=Z)
+    esg = ESG(dt_sim=1, Z=Z, r=r)
+    df_full_run = esg.run_multistep_to_pandas(dt_out=1, max_t=10)
+   
+
+    mean_ = df_full_run[['r']].mean(axis=0).values
+   
+        
+        
+        
 def time_fc(fc, params):
     took = datetime.datetime.now()-datetime.datetime.now()
     for _ in range(3):
@@ -131,11 +156,11 @@ def time_surface_fc(fc, params):
 #print(time_fc(hw1f_test_short_rate_bonds_cash, (1/250,1000)))
 #print(time_fc(hw1f_test_short_rate_vector_bonds_cash, (1/250,1000)))
 #print(time_fc(hw1f_test_nested_esg_short_rate_vector_bonds_cash, (1/250,1000)))
-print(time_fc(equity_stochastic_interest_rate, (1/250,1000)))
+#print(time_fc(equity_stochastic_interest_rate, (1/250,1000)))
 #time_surface_fc(hw1f_test_short_rate_vector_bonds_cash, 
 #                params= chain( product([1,0.1], [1000,10000]),
 #                              [(1/250, 50_000)]))
-
+print(time_fc(hw_yearly_short_rate, (100000,)))
 """
 History
 

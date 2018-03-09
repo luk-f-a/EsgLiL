@@ -58,7 +58,7 @@ class gbm_leakage_test(unittest.TestCase):
         ref_mean = 100*np.ones((1,40))
         errors = mc_mean/ref_mean-1
         if not np.all(np.less(np.abs(errors), 0.01)):
-            print(errors)
+            print('Errors in GBM leakage Test', errors)
         self.assertTrue(np.all(np.less(np.abs(errors), 0.01)))
 
 class gbm_statistical_test_stochastic_r(unittest.TestCase):
