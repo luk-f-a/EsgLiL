@@ -11,7 +11,8 @@ from esglil.ir_models import (HullWhite1fShortRate, HullWhite1fCashAccount,
                               HullWhite1fBondPrice, hw1f_B_function,
                               HullWhite1fConstantMaturityBondPrice,
                               ShortRateSimpleAnnualModel,
-                              CashAccountSimpleAnnualModel)
+                              CashAccountSimpleAnnualModel,
+                              HWyearlyStochasticDriver)
 from esglil.ir_models import DeterministicBankAccount
 from esglil.esg import ESG
 from esglil.equity_models import (GeometricBrownianMotion, GBM_exact,
@@ -185,6 +186,47 @@ def get_gbm_hw_2levels(delta_t_l1, delta_t_l2, sims, rho, bond_prices,
  
     esg_l2 = ESG(dt_sim=delta_t_l2, esg_l1=esg_l1, **opt_kwargs)
     return esg_l2
+
+def get_hw_gbm_yearly(sims, rho, bond_prices, 
+                       hw_alpha = 0.5, hw_sigma = 0.01,
+                       gbm_sigma=0.2, const_tau=None, out_bonds=None,
+                       custom_ind_dw=None):
+    
+    """Returns an esg model loop with short_rate cash, equity,
+    bonds and/or constant maturity bonds using a GBM and HW models on an
+    annual simulation step.
+        
+        
+    sims: int
+        amount of simulations to run - this is the amount of "flat" sims 
+        or outer sims in a MCMV scheme
+    
+    rho: float 
+        correlation between HW and GBM Brownian motions.
+    
+    bond_prices: dictionary {maturity: price}
+       prices for notional 1 zero-coupon bonds, ie discount factors.
+        
+    const_tau: 1-d array
+        constant time to maturity to track bond prices (instead of calculating
+        all prices at every step)
+        
+    out_bonds: 1-d array
+        maturity of bonds to track at every time step
+        
+    custom_ind_dw: Rng object
+        Use this Rng instead of the default one
+    
+    """
+    indep_cov = np.diag([1, 1, 1])
+    ind_Z = rng.NormalRng(dims=3, sims=sims, mean=[0, 0, 0], cov=indep_cov)
+    Z_0_1  = HWyearlyStochasticDriver(ind_Z[[0,1]], hw_sigma, hw_alpha)
+    Z_1_2 = rng.CorrelatedRV(ind_Z[[0,2]], input_cov=np.diag([1,1]), 
+                            target_cov=np.array([[1,rho], [rho,1]]))
+    return ESG(dt_sim=1, ind_Z = ind_Z, Z_0_1=Z_0_1, Z_1_2=Z_1_2)
+    
+    
+    
 
 def esg_equity(delta_t, sims, r=0.03, gbm_sigma=0.2, generator='mc-numpy',
                  dask_chunks=1, seed=None, n_threads=1):

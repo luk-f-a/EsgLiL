@@ -740,14 +740,16 @@ class HWyearlyStochasticDriver(StochasticVariable):
         hull white alpha mean reversion speed parameter 
     """
     def __new__(cls, rng, sigma_hw, alpha_hw):
-        sigma_r = sigma_hw**2/2/alpha_hw*(1-np.exp(-2*alpha_hw))
+        sigma_r = (sigma_hw**2/2/alpha_hw*(1-np.exp(-2*alpha_hw)))**0.5
         sigma_y = (sigma_hw**2/alpha_hw**2*
                        (1+1/2/alpha_hw*(1-np.exp(-2*alpha_hw))
-                        +2/alpha_hw*(np.exp(-alpha_hw)-1)))
-        sigma_r_y = (sigma_hw**2/alpha_hw**2*
+                        +2/alpha_hw*(np.exp(-alpha_hw)-1)))**0.5
+        sigma_r_y = (sigma_hw**2/2/alpha_hw*
                        (1+np.exp(-2*alpha_hw)
-                        +2*np.exp(-alpha_hw)))
+                        -2*np.exp(-alpha_hw)))
+#        print('sigma_r_y','sigma_r','sigma_y', sigma_r_y,sigma_r,sigma_y)
         rho_r_y = sigma_r_y/sigma_r/sigma_y
+#        print(rho_r_y)
         return CorrelatedRV(rng, input_cov=np.diag([1,1]), 
                             target_cov=np.array([[1,rho_r_y], [rho_r_y,1]]))
         
@@ -763,8 +765,8 @@ class HWyearlyShortRate(StochasticVariable):
      Parameters
     ----------
         
-    mu_r : callable (with t as only argument)
-        mean of the short rate in each period.
+    g : callable (with two arguments)
+        integral of exp(-alpha(T-t))b(t)
         
     alpha: scalar or Variable object
         mean reversion speed
@@ -778,8 +780,8 @@ class HWyearlyShortRate(StochasticVariable):
 
     
     __slots__ = ['sigma_r', 'mu_r', 'alpha', 'Z']
-    def __init__(self, mu_r, sigma_hw, alpha_hw, r_zero, Z):
-        self.mu_r =mu_r
+    def __init__(self, g, sigma_hw, alpha_hw, r_zero, Z):
+        self.mu_r = lambda t:alpha_hw*g(t, t+1)
         self.sigma_r = sigma_hw**2/alpha_hw**2*(1-np.exp(-2*alpha_hw))
         self.alpha = alpha_hw
         self.value_t = r_zero
@@ -792,18 +794,46 @@ class HWyearlyShortRate(StochasticVariable):
         self.t_1 = t
         
 class HWyearlyCashAccount(StochasticVariable):
-    __slots__ = ['sigma_y', 'mu_y', 'alpha', 'Y_t', 'Z']
-    def __init__(self, mu_y, sigma_hw, alpha_hw, r_zero, Z):
-        self.mu_y =mu_y
+    """class for (1 Factor) Hull White model of short interest rate
+    This class implements the cash account
+    
+    dr(t)=alpha*[b(t)-r(t)]dt+sigma*dW(t)
+    according to Glasserman's book formulae
+
+    
+     Parameters
+    ----------
+        
+    h(t, T) : callable (with 2 arguments)
+        double integral of exp(-alpha(T-s)*b(s))
+        
+    alpha: scalar or Variable object
+        mean reversion speed
+    
+    sigma_hw : scalar
+        standard deviation
+        
+    Z: random number generator
+        1-d standard normal variable, must be correlated to the Z for the 
+        short rate in specific way, given by the HWyearlyStochasticDriver class
+    """ 
+    
+    __slots__ = ['sigma_y', 'h', 'alpha', 'Y_t', 'Z', 'r']
+    
+    def __init__(self, h, sigma_hw, alpha_hw, r, Z):
+        self.mu_y = lambda t: (1/alpha_hw*(1-np.exp(-alpha_hw))*r
+                               +alpha_hw*h(t,t+1))
         self.sigma_y = (sigma_hw**2/alpha_hw**2*
                        (1+1/2/alpha_hw*(1-np.exp(-2*alpha_hw))
                         +2/alpha_hw*(np.exp(-alpha_hw)-1)))
         self.value_t = 1
         self.Y_t = 0
         self.Z = Z
+        self.r = r
         self.t_1 = 0
         
     def run_step(self, t):
+        assert self.r.t_1==self.t_1, "Cash account simulation must be done before r simulation for the new period"
         self.Y_t = self.Y_t+self.mu_y(self.t_1)+self.sigma_y*self.Z
         self.value_t = np.exp(self.Y_t)
         self.t_1 = t
@@ -859,14 +889,17 @@ class HWyearlyBondPrice(StochasticVariable):
         h = self.h
         T = self.T
         
-        A = 1/self.alpha*(1-np.exp(-self.a*(self.T-t)))
-        
-        C = (-self.alpha*h(t, T)+ sigma**2*alpha**2*[(T-t)+1/2/alpha*(1-np.exp(-2*alpha*(T-t)))+
-                                             +2/alpha*(np.exp(-alpha(T-t))-1)])
-        self.value_t = np.exp(-A*r+C)
+        self.value_t = hw_bond_price(alpha, T, t, h, sigma, r, lib=np)
         self.t_1 = t
 
-
+def hw_bond_price(alpha, T, t, h, sigma, r, lib=np):
+        exp = lib.exp
+        A = 1/alpha*(1-exp(-alpha*(T-t)))
+        
+        C = (-alpha*h(t, T)+ sigma**2*alpha**2*[(T-t)+1/2/alpha*(1-exp(-2*alpha*(T-t)))+
+                                             +2/alpha*(exp(-alpha(T-t))-1)])
+        return exp(-A*r+C)
+     
 class HWyearlyConstantMaturityBondPrice(StochasticVariable):
     """class for (1 Factor) Hull White model of short interest rate
     This class implements the bond prices for time to maturity tau (instead of
@@ -920,7 +953,6 @@ class HWyearlyConstantMaturityBondPrice(StochasticVariable):
         self.value_t = ValueDict({float(t):P_0(t) for t in tau[:,0]})
         self.P_0 = P_0
         self.t_1 = 0
-        self.A = 1/alpha*(1-np.exp(-alpha*tau))
 #        self._check_valid_params()
 
         
@@ -930,12 +962,9 @@ class HWyearlyConstantMaturityBondPrice(StochasticVariable):
         r = self.r
         h = self.h  
         T = self.tau + t
-        A = self.A
-        
-        C = (-self.alpha*h(t, T)+ sigma**2*alpha**2*[(T-t)+1/2/alpha*(1-np.exp(-2*alpha*(T-t)))+
-                                             +2/alpha*(np.exp(-alpha(T-t))-1)])
 
-        bond_prices = np.exp(-A*r+C)       
+        bond_prices = hw_bond_price(alpha, T, t, h, sigma, r, lib=np)
+        
         self.value_t = ValueDict({float(t):bond for t, bond 
                                     in zip(self.tau[:,0], bond_prices)})
         self.t_1 = t
@@ -958,4 +987,21 @@ def get_HWyearly_g_fc(b_s, t_points, T_points, alpha):
     g = sp.integrate(sp.exp(-alpha*(T-s))*b, (s, t, T))
     out = {(t_, T_): float(g.subs(t,t_).subs(T,T_).evalf()) for t_, T_ in zip(t_points, T_points)}
     return out
+
+def get_HWyearly_h_fc(b_s, t_points, T_points, alpha):
+    """
+    return g(t, T) evaluated at the points as provided
     
+    paramters
+    ---------
+    b_s: callable with one parameter
+        b parameter in HW model as a function of t
+        
+    
+    """
+    s, T, t, u = sp.symbols("s T t u")
+    piecewise_args = [(b_s(t_), s < t_+1) for t_ in t_points]
+    b = sp.Piecewise(*piecewise_args, (b_s(t_points[-1]), True))
+    h = sp.integrate(sp.integrate(sp.exp(-alpha*(u-s))*b, (s, t, u)), (u, t, T))
+    out = {(t_, T_): float(h.subs(t,t_).subs(T,T_).evalf()) for t_, T_ in zip(t_points, T_points)}
+    return out

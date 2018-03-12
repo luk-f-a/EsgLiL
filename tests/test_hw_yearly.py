@@ -16,6 +16,7 @@ from esglil.common import TimeDependentParameter
 from esglil.ir_models import HWyearlyShortRate
 from esglil.ir_models import get_HWyearly_g_fc
 from esglil import ir_models
+from esglil.model_zoo import get_hw_gbm_yearly
 import numpy as np
 import pandas as pd
 from scipy.stats import normaltest, kstest
@@ -29,8 +30,11 @@ class hw_test_short_rate(unittest.TestCase):
         Z = rng.NormalRng(dims=1, sims=10, mean=[0], cov=[[delta_t]])
         alpha = 0.001
         sigma = 0.01
-        mu = lambda t: 0.01
-        r = HWyearlyShortRate(mu_r=mu, sigma_hw=sigma, 
+        b = 0.01
+        g = get_HWyearly_g_fc(b_s=lambda t:b, t_points=range(0,41), 
+                              T_points=range(1,42), alpha=alpha)
+        g_fc = lambda t, T: g[(int(t),int(T))]
+        r = HWyearlyShortRate(g=g_fc, sigma_hw=sigma, 
                               alpha_hw=alpha, r_zero=0.02, Z=Z)
         self.esg = ESG(dt_sim=delta_t, Z=Z, r=r)
 
@@ -167,58 +171,62 @@ class hw_test_short_rate(unittest.TestCase):
 #        self.assertTrue(np.all(np.less(np.abs(errors), 0.01)))
 #
 #      #TODO: check sigmas (how? the match is not perfect to real market data)  
-#      
-class hw_stat_test_short_rate(unittest.TestCase):            
-    def setUp(self):
-       
-        self.delta_t = 1
-        self.Z = rng.NormalRng(dims=1, sims=100_000, mean=[0], cov=[[self.delta_t]])
+#   
         
-    def test_fixed_mean_reversion1(self):
-        """Test that starting from a level it stays in that level
-        """
-
-        alpha = 0.1
-        sigma = 0.01
-        b = 0.01
-        g = get_HWyearly_g_fc(b_s=lambda t:b, t_points=range(0,10), 
-                              T_points=range(1,11), alpha=alpha)
-
-        mu = lambda t: alpha*g[(t, t+1)]
-        r = HWyearlyShortRate(mu_r=mu, sigma_hw=sigma, 
-                              alpha_hw=alpha, r_zero=b, Z=self.Z)
-        self.esg = ESG(dt_sim=self.delta_t, Z=self.Z, r=r)
-        self.df_full_run = self.esg.run_multistep_to_pandas(dt_out=1, max_t=10)
-       
-
-        mean_ = self.df_full_run[['r']].mean(axis=0).values
-        self.assertTrue(np.allclose(mean_, [b]*10, rtol=0.01))
-
-    def test_fixed_mean_reversion2(self):
-        """Test that starting from a high level it reverts
-        """
-        alpha = 0.5
-        sigma = 0.01
-        b = 0.01
-        g = get_HWyearly_g_fc(b_s=lambda t:b, t_points=range(0,10), 
-                              T_points=range(1,11), alpha=alpha)
-
-        mu = lambda t: alpha*g[(t, t+1)]
-        r = HWyearlyShortRate(mu_r=mu, sigma_hw=sigma, 
-                              alpha_hw=alpha, r_zero=0.1, Z=self.Z)
-        self.esg = ESG(dt_sim=self.delta_t, Z=self.Z, r=r)
+#############
         
-        self.df_full_run = self.esg.run_multistep_to_pandas(dt_out=1, max_t=10)
-       
+#class hw_stat_test_short_rate(unittest.TestCase):            
+#    def setUp(self):
+#       
+#        self.delta_t = 1
+#        self.Z = rng.NormalRng(dims=1, sims=100_000, mean=[0], cov=[[self.delta_t]])
+#        
+#    def test_fixed_mean_reversion1(self):
+#        """Test that starting from a level it stays in that level
+#        """
+#
+#        alpha = 0.1
+#        sigma = 0.01
+#        b = 0.01
+#        g = get_HWyearly_g_fc(b_s=lambda t:b, t_points=range(0,10), 
+#                              T_points=range(1,11), alpha=alpha)
+#
+#        mu = lambda t: alpha*g[(t, t+1)]
+#        r = HWyearlyShortRate(mu_r=mu, sigma_hw=sigma, 
+#                              alpha_hw=alpha, r_zero=b, Z=self.Z)
+#        self.esg = ESG(dt_sim=self.delta_t, Z=self.Z, r=r)
+#        self.df_full_run = self.esg.run_multistep_to_pandas(dt_out=1, max_t=10)
+#       
+#
+#        mean_ = self.df_full_run[['r']].mean(axis=0).values
+#        self.assertTrue(np.allclose(mean_, [b]*10, rtol=0.01))
+#
+#    def test_fixed_mean_reversion2(self):
+#        """Test that starting from a high level it reverts
+#        """
+#        alpha = 0.5
+#        sigma = 0.01
+#        b = 0.01
+#        g = get_HWyearly_g_fc(b_s=lambda t:b, t_points=range(0,10), 
+#                              T_points=range(1,11), alpha=alpha)
+#
+#        mu = lambda t: alpha*g[(t, t+1)]
+#        r = HWyearlyShortRate(mu_r=mu, sigma_hw=sigma, 
+#                              alpha_hw=alpha, r_zero=0.1, Z=self.Z)
+#        self.esg = ESG(dt_sim=self.delta_t, Z=self.Z, r=r)
+#        
+#        self.df_full_run = self.esg.run_multistep_to_pandas(dt_out=1, max_t=10)
+#       
+#
+#        mean_ = self.df_full_run[['r']].mean(axis=0).values
+#
+#        delta = np.array(mean_)-b
+#        self.assertAlmostEqual(delta[-1], 0, 2)
+#        diff_delta = np.array([d-d_1 for d, d_1 in zip(delta[:-1], delta[1:])])
+#
+#        self.assertTrue(np.all(diff_delta>0))
 
-        mean_ = self.df_full_run[['r']].mean(axis=0).values
-
-        delta = np.array(mean_)-b
-        self.assertAlmostEqual(delta[-1], 0, 2)
-        diff_delta = np.array([d-d_1 for d, d_1 in zip(delta[:-1], delta[1:])])
-
-        self.assertTrue(np.all(diff_delta>0))
-        
+############################33      
 #    def test_distribution(self):
 #        """Test r follows the distribution implied by the solution of its SDE
 #        """
@@ -268,9 +276,15 @@ class hw_stat_test_short_rate(unittest.TestCase):
 #       
 #        self.assertTrue(res)
 #   
-
-    
+class hw_gbm_model(unittest.TestCase):            
+    def test_rng(self):
+        bond_prices= {i: (1+0.002)**(-i) for i in range(1,100)}
+        alpha = 0.5
+        hw_sigma = 0.01
+        esg = get_hw_gbm_yearly(sims=5, hw_alpha=alpha, hw_sigma=hw_sigma,
+                                rho=0.2, bond_prices=bond_prices)
         
+        print(esg.run_multistep_to_pandas(dt_out=1, max_t=2))
 if __name__ == '__main__':
     unittest.main()              
             
