@@ -11,7 +11,7 @@ from scipy.interpolate import make_interp_spline
 from esglil.common import StochasticVariable, ValueDict
 from esglil.rng import CorrelatedRV
 from collections import Iterable
-import sympy as sp
+
 
 
 def hw1f_sigma_calibration(bond_prices, swaption_prices, a):
