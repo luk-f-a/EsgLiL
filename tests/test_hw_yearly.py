@@ -14,7 +14,7 @@ from esglil import rng
 from esglil.esg import ESG
 from esglil.common import TimeDependentParameter
 from esglil.ir_models import HWyearlyShortRate
-from esglil.ir_models import get_HWyearly_g_fc
+from esglil.ir_models import get_hw_yearly_g
 from esglil import ir_models
 from esglil.model_zoo import get_hw_gbm_yearly
 import numpy as np
@@ -31,10 +31,9 @@ class hw_test_short_rate(unittest.TestCase):
         alpha = 0.001
         sigma = 0.01
         b = 0.01
-        g = get_HWyearly_g_fc(b_s=lambda t:b, t_points=range(0,41), 
-                              T_points=range(1,42), alpha=alpha)
-        g_fc = lambda t, T: g[(int(t),int(T))]
-        r = HWyearlyShortRate(g=g_fc, sigma_hw=sigma, 
+        b_fc = lambda t:b
+        g = get_hw_yearly_g(b_s=b_fc, alpha=alpha)
+        r = HWyearlyShortRate(g=g, sigma_hw=sigma, 
                               alpha_hw=alpha, r_zero=0.02, Z=Z)
         self.esg = ESG(dt_sim=delta_t, Z=Z, r=r)
 
@@ -280,7 +279,7 @@ class hw_gbm_model(unittest.TestCase):
     def test_rng(self):
         bond_prices= {i: (1+0.002)**(-i) for i in range(1,100)}
         alpha = 0.5
-        hw_sigma = 0.01
+        hw_sigma = 0.02
         esg = get_hw_gbm_yearly(sims=5, hw_alpha=alpha, hw_sigma=hw_sigma,
                                 rho=0.2, bond_prices=bond_prices)
         
