@@ -21,7 +21,7 @@ from esglil.ir_models import (HullWhite1fShortRate, HullWhite1fCashAccount,
 from esglil.ir_models import DeterministicBankAccount
 from esglil.esg import ESG
 from esglil.equity_models import (GeometricBrownianMotion, GBM_exact,
-                                  EquitySimpleAnnualModel)
+                                  EquitySimpleAnnualModel, EquityExcessReturns)
 from esglil import rng
 
 def esg_e_sr_bonds_cash(delta_t, sims, rho, bond_prices, hw_a = 0.001, 
@@ -242,7 +242,7 @@ def get_hw_gbm_yearly(sims, rho, bond_prices,
     h = get_hw_yearly_1param_h(b_s=b, alpha=hw_alpha)
     cash = HWyearlyCashAccount(h=h, sigma_hw=hw_sigma,  alpha_hw=hw_alpha, 
                                r=r, Z=Z_r_c[1])
-    S = GeometricBrownianMotion(mu=r, sigma=gbm_sigma, dW=Z_r_e[1])
+    S = EquityExcessReturns(cash=cash, sigma=gbm_sigma, Z=Z_r_e[1])
     opt_kwargs = {}
     if const_tau is not None:
         raise NotImplementedError

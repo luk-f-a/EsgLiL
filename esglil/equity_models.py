@@ -86,6 +86,46 @@ class GBM_exact(StochasticVariable):
         self._evaluate_ne('s_zero*exp(mu-0.5*sigma**2)*t+W*sigma', 
                           local_vars={'t': t}, out_var='value_t')
 
+class EquityExcessReturns(StochasticVariable):
+    """class for Geometric Brownian Motion model of equity returns
+        calculated from the solution to the SDE (dS/S = mu*dt + sigma*dW)
+        as S = S_0*exp((mu-0.5*sigma**2/2)*t+sigma*W) instead of using
+        Euler on the SDE
+        without drift and applied on top of a cash index
+        
+     Parameters
+    ----------
+    mu : scalar or SDE
+        drift
+        
+    sigma : scalar or SDE
+        standard deviation of gbm
+        
+    s_zero : scalar or SDE
+        initial value of gbm. Defaults to 1.
+        
+    delta_t : scalar
+        
+    """
+    __slots__ = ('cash', 'sigma', 'Z',  'exc_t', 's_zero')   
+    
+    def __init__(self, cash, sigma, Z, s_zero=100):
+        self.cash = cash
+        self.sigma = sigma
+        self.Z = Z
+        self.t_1 = 0
+        self.s_zero = s_zero
+        self.value_t = s_zero
+        self.exc_t = 1
+        #self._check_valid_params()
+
+    def run_step(self, t):
+        self.exc_t = self.exc_t*np.exp((-0.5*self.sigma**2)+self.Z*self.sigma)
+        self.value_t = self.cash*self.s_zero*self.exc_t
+        return self
+    
+  
+
 class EquitySimpleAnnualModel(StochasticVariable):
     """class for a simple annual model of equity returns
         
