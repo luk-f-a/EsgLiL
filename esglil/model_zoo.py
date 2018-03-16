@@ -17,7 +17,9 @@ from esglil.ir_models import (HullWhite1fShortRate, HullWhite1fCashAccount,
                               HWyearlyShortRate,
                               calc_r_zero,
                               HWyearlyCashAccount,
-                              get_hw_yearly_1param_h)
+                              get_hw_yearly_h,
+                              HWyearlyConstantMaturityBondPrice,
+                              HWyearlyBondPrice)
 from esglil.ir_models import DeterministicBankAccount
 from esglil.esg import ESG
 from esglil.equity_models import (GeometricBrownianMotion, GBM_exact,
@@ -193,7 +195,7 @@ def get_gbm_hw_2levels(delta_t_l1, delta_t_l2, sims, rho, bond_prices,
     return esg_l2
 
 def get_hw_gbm_yearly(sims, rho, bond_prices, 
-                       hw_alpha = 0.5, hw_sigma = 0.01,
+                       hw_alpha=0.5, hw_sigma=0.01,
                        gbm_sigma=0.2, const_tau=None, out_bonds=None,
                        custom_ind_z=None):
     
@@ -234,28 +236,27 @@ def get_hw_gbm_yearly(sims, rho, bond_prices,
     Z_r_c  = HWyearlyStochasticDriver(ind_Z[[0,1]], hw_sigma, hw_alpha)
     Z_r_e = rng.CorrelatedRV(ind_Z[[0,2]], input_cov=np.diag([1,1]), 
                             target_cov=np.array([[1,rho], [rho,1]]))
-    b = lambda t:0.02
+    b = lambda t:0.01
     g = get_hw_yearly_g(b_s=b, alpha=hw_alpha)
     r_zero = calc_r_zero(bond_prices[1])
     r = HWyearlyShortRate(g=g, sigma_hw=hw_sigma, alpha_hw=hw_alpha, 
                           r_zero=r_zero, Z=Z_r_c[0])
-    h = get_hw_yearly_1param_h(b_s=b, alpha=hw_alpha)
+    h = get_hw_yearly_h(b=b, alpha=hw_alpha)
     cash = HWyearlyCashAccount(h=h, sigma_hw=hw_sigma,  alpha_hw=hw_alpha, 
                                r=r, Z=Z_r_c[1])
     S = EquityExcessReturns(cash=cash, sigma=gbm_sigma, Z=Z_r_e[1])
     opt_kwargs = {}
     if const_tau is not None:
-        raise NotImplementedError
         hw_const_bond = HWyearlyConstantMaturityBondPrice
-#        constP = hw_const_bond(a=hw_a, r=esg_l1['r'], sigma=hw_sigma,  
-#                               P_0=p0, f=f, tau=const_tau.reshape(-1,1))
+        constP = hw_const_bond(alpha=hw_alpha, r=r, sigma=hw_sigma,  
+                               P_0=bond_prices, tau=const_tau.reshape(-1,1),
+                               h=h)
         opt_kwargs['constP'] = constP
         
     if out_bonds is not None:
-        raise NotImplementedError
         T = out_bonds
-#        P = HullWhite1fBondPrice(a=hw_a, r=esg_l1['r'], sigma=hw_sigma, 
-#                                 P_0=p0, f=f, T=T)
+        P = HWyearlyBondPrice(alpha=hw_alpha, r=r, sigma_hw=hw_sigma, 
+                                 h=h, T=T)
         opt_kwargs['P'] = P
         
     esg =  ESG(dt_sim=1, ind_Z = ind_Z, Z_r_c=Z_r_c, Z_r_e=Z_r_e,

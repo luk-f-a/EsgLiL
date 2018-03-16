@@ -895,7 +895,6 @@ class HWyearlyBondPrice(StochasticVariable):
 def hw_bond_price(alpha, T, t, h, sigma, r, lib=np):
         exp = lib.exp
         A = 1/alpha*(1-exp(-alpha*(T-t)))
-        
         C = (-alpha*h(t, T)+ sigma**2*alpha**2*((T-t)+1/2/alpha*(1-exp(-2*alpha*(T-t)))+
                                              +2/alpha*(exp(-alpha*(T-t))-1)))
         return exp(-A*r+C)
@@ -934,24 +933,25 @@ class HWyearlyConstantMaturityBondPrice(StochasticVariable):
     tau: scalar or array
         Bond maturity
         
-    f: function
-        fm(0,t), instantaneous forward rate at time 0 observed (market) and interpolated
-    
-    P_0: function
-        P(0,T), bond prices at time 0 observed (market) and interpolated
+   
+    P_0: dict
+        P[T], bond prices at time 0 observed (market) for maturity T
     
     r: stochastic variable
         short rate
     """    
-    __slots__ = ('tau', 'A', 'alpha', 'sigma', 'r', 'f', 'P_0', 'h')
+    __slots__ = ('tau', 'A', 'alpha', 'sigma', 'r', 'h')
     
     def __init__(self, alpha, sigma, r, P_0, tau, h):
         self.tau = tau
         self.alpha = alpha
         self.sigma = sigma
         self.r = r
-        self.value_t = ValueDict({float(t):P_0(t) for t in tau[:,0]})
-        self.P_0 = P_0
+        if isinstance(tau, np.ndarray):
+            self.h = np.vectorize(h, excluded='t')
+        else:
+            self.h = h
+        self.value_t = ValueDict({float(t):P_0[t] for t in tau[:,0]})
         self.t_1 = 0
 #        self._check_valid_params()
 
@@ -971,16 +971,30 @@ class HWyearlyConstantMaturityBondPrice(StochasticVariable):
 
 
 def get_hw_yearly_g(b_s, alpha):
-    k = (np.exp(alpha)-1)/alpha
+    k_m = (1-np.exp(-alpha))/alpha
     def g(t):
-        return b_s(t)*np.exp(-alpha*(t+1))*k
+        return b_s(t)*k_m
     return g
         
-def get_hw_yearly_1param_h(b_s, alpha):
-    k = (np.exp(alpha)-1)/alpha
-    l = (1-np.exp(-alpha))/alpha
-    def h(t):
-        return b_s(t)*k*l
+
+def get_hw_yearly_h(b, alpha):
+    k_p = (np.exp(alpha)-1)/alpha
+    k_m = (1-np.exp(-alpha))/alpha
+    m = (alpha+np.exp(-alpha)-1)/(alpha**2)
+    def h(t, T=None):
+        t = int(t)
+        if T is None:
+            T = t+1
+        else:
+            T = int(T)
+        h_val = 0
+        for j in range(t, T):
+            for i in range(t, j):
+                h_val += b(i)*np.exp(-alpha*(j-i))
+        h_val *= k_p*k_m
+        for j in range(t, T):
+            h_val += m*b(j)
+        return h_val
     return h
 
 def calc_r_zero(b1_price):
