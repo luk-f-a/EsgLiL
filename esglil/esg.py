@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 from itertools import repeat
 from esglil.common import StochasticVariable
+from collections import Iterable
 
 class Model(object):
     """ Performs time loop on objects associated with it.
@@ -200,6 +201,8 @@ class Model(object):
             Examples:
                 {'a':slice(5)} means include all output of variable 'a'
                 until time 5 (including 5)
+                'a':slice(5,5)} means include output of variable 'a'
+                only for time 5
                 {'a':slice(None)} means include all output of variable 'a',
                 for every timestep
                 {'a':slice(1, 5)} means include all output of variable 'a'
@@ -285,13 +288,16 @@ class Model(object):
         if not name in out_vars:
             return False
         else:
-            if (((out_vars[name].start is None) or
-                out_vars[name].start <= self.clock) and
-                ((out_vars[name].stop is None) or
-            out_vars[name].stop >= self.clock)):
-                return True
+            if isinstance(out_vars[name], Iterable):
+                return self.clock in out_vars[name]
             else:
-                return False 
+                if (((out_vars[name].start is None) or
+                    out_vars[name].start <= self.clock) and
+                    ((out_vars[name].stop is None) or
+                out_vars[name].stop >= self.clock)):
+                    return True
+                else:
+                    return False 
         
     def dict_value_t(self, out_vars):
         get_this_step = lambda name: self.get_this_model_step(name, out_vars)
