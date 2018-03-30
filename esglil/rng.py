@@ -107,7 +107,32 @@ class NormalRng(Rng):
                                             check_valid='raise').T
         return out
 
-
+class PCAIndWienerIncr(Rng):
+    __slots__ = ('mean', 'delta_t', 'generator', 'years', 'current_year',
+                 'gen_rn')
+                 
+    def __init__(self,  dims, sims, mean=0, delta_t=1, years=1, generator='mc-numpy',
+                 dask_chunks=1, seed=None, n_threads=1):
+        Rng.__init__(self, dims, sims)
+        self.mean = mean
+        self.years = years
+        self.delta_t = delta_t    
+        self.gen_rn = np.random.normal(self.mean, np.sqrt(self.delta_t),
+                             size=(self.dims*self.years, self.sims))
+        from sklearn.decomposition import PCA
+        pca = PCA(self.dims*self.years)
+        self.gen_rn = pca.fit_transform(self.gen_rn.T).reshape(years, dims, sims)
+        self.current_year = 0
+        
+    def generate(self):
+        """Return the next iteration of the random number generator
+        """
+        out = self.gen_rn[self.current_year,:,:]
+        self.current_year += 1
+        return out
+        
+                
+    
 class IndWienerIncr(Rng):
     """class for independent increments of Wiener process
 
