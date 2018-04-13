@@ -19,7 +19,8 @@ from esglil.ir_models import (HullWhite1fShortRate, HullWhite1fCashAccount,
                               HWyearlyCashAccount,
                               get_hw_yearly_h,
                               HWyearlyConstantMaturityBondPrice,
-                              HWyearlyBondPrice)
+                              HWyearlyBondPrice,
+                              hw_yearly_calibrate_b_function)
 from esglil.ir_models import DeterministicBankAccount
 from esglil.esg import ESG
 from esglil.equity_models import (GeometricBrownianMotion, GBM_exact,
@@ -236,7 +237,8 @@ def get_hw_gbm_yearly(sims, rho, bond_prices,
     Z_r_c  = HWyearlyStochasticDriver(ind_Z[[0,1]], hw_sigma, hw_alpha)
     Z_r_e = rng.CorrelatedRV(ind_Z[[0,2]], input_cov=np.diag([1,1]), 
                             target_cov=np.array([[1,rho], [rho,1]]))
-    b = lambda t:0.01
+    b_vec = hw_yearly_calibrate_b_function(bond_prices, hw_alpha, hw_sigma)
+    b = lambda t:b_vec[int(t)]
     g = get_hw_yearly_g(b_s=b, alpha=hw_alpha)
     r_zero = calc_r_zero(bond_prices[1])
     r = HWyearlyShortRate(g=g, sigma_hw=hw_sigma, alpha_hw=hw_alpha, 

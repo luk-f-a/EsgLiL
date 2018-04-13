@@ -782,7 +782,7 @@ class HWyearlyShortRate(StochasticVariable):
     __slots__ = ['sigma_r', 'mu_r', 'alpha', 'Z']
     def __init__(self, g, sigma_hw, alpha_hw, r_zero, Z):
         self.mu_r = lambda t:alpha_hw*g(t)
-        self.sigma_r = sigma_hw**2/alpha_hw**2*(1-np.exp(-2*alpha_hw))
+        self.sigma_r = np.sqrt(sigma_hw**2/2/alpha_hw*(1-np.exp(-2*alpha_hw)))
         self.alpha = alpha_hw
         self.value_t = r_zero
         self.Z = Z
@@ -823,7 +823,7 @@ class HWyearlyCashAccount(StochasticVariable):
     def __init__(self, h, sigma_hw, alpha_hw, r, Z):
         self.mu_y = lambda t: (1/alpha_hw*(1-np.exp(-alpha_hw))*r
                                +alpha_hw*h(t))
-        self.sigma_y = (sigma_hw**2/alpha_hw**2*
+        self.sigma_y = np.sqrt(sigma_hw**2/alpha_hw**2*
                        (1+1/2/alpha_hw*(1-np.exp(-2*alpha_hw))
                         +2/alpha_hw*(np.exp(-alpha_hw)-1)))
         self.value_t = 1
@@ -869,7 +869,7 @@ class HWyearlyBondPrice(StochasticVariable):
     h(t, T): callable
         double integral of exp(-alpha(u-s))*b(s)
     """    
-    __slots__ = ('T', 'a', 'sigma', 'r', 'f', 'P_0')
+    __slots__ = ('T', 'alpha', 'sigma', 'r', 'h')
     
     def __init__(self, alpha, sigma_hw, r, h, T):
         self.T = T
@@ -884,7 +884,7 @@ class HWyearlyBondPrice(StochasticVariable):
         
     def run_step(self, t):
         alpha = self.alpha
-        sigma = self.sigma_hw
+        sigma = self.sigma
         r = self.r
         h = self.h
         T = self.T
@@ -895,9 +895,10 @@ class HWyearlyBondPrice(StochasticVariable):
 def hw_bond_price(alpha, T, t, h, sigma, r, lib=np):
         exp = lib.exp
         A = 1/alpha*(1-exp(-alpha*(T-t)))
-        C = (-alpha*h(t, T)+ sigma**2*alpha**2*((T-t)+1/2/alpha*(1-exp(-2*alpha*(T-t)))+
+        C = (-alpha*h(t, T)+ sigma**2/2/alpha**2*((T-t)+1/2/alpha*(1-exp(-2*alpha*(T-t)))+
                                              +2/alpha*(exp(-alpha*(T-t))-1)))
         return exp(-A*r+C)
+
      
 class HWyearlyConstantMaturityBondPrice(StochasticVariable):
     """class for (1 Factor) Hull White model of short interest rate
@@ -990,85 +991,65 @@ def get_hw_yearly_h(b, alpha):
         h_val = 0
         for j in range(t, T):
             for i in range(t, j):
+#                print('int1', b(i)*np.exp(-alpha*(j-i)))
                 h_val += b(i)*np.exp(-alpha*(j-i))
         h_val *= k_p*k_m
         for j in range(t, T):
             h_val += m*b(j)
+#            print('m', m)
+#            print('b{}'.format(j), b(j))
+#            print('int2', m*b(j))
         return h_val
     return h
 
 def calc_r_zero(b1_price):
     return -(np.log(b1_price))
 
-#def get_HWyearly_g_fc(b_s, t_points, T_points, alpha):
-#    """
-#    return g(t, T) evaluated at the points as provided
-#    
-#    paramters
-#    ---------
-#    b_s: callable with one parameter
-#        b parameter in HW model as a function of t
-#        
-#    
-#    """
-#    s, T, t = sp.symbols("s T t")
-#    piecewise_args = [(b_s(t_), s < t_+1) for t_ in t_points]
-#    b = sp.Piecewise(*piecewise_args, (b_s(t_points[-1]), True))
-#    g = sp.integrate(sp.exp(-alpha*(T-s))*b, (s, t, T))
-#    out = {(t_, T_): float(g.subs(t,t_).subs(T,T_).evalf()) for t_, T_ in zip(t_points, T_points)}
-#    return out
-#
-#def get_HWyearly_h_fc(b_s, t_points, T_points, alpha, return_float=True):
-#    """
-#    return h(t, T) evaluated at the points as provided
-#    
-#    paramters
-#    ---------
-#    b_s: callable with one parameter
-#        b parameter in HW model as a function of t
-#        
-#    
-#    """
-##    s, T, t, u = sp.symbols("s T t u", real=True, positive=True)
-#    s, u = sp.symbols("s u", real=True, positive=True)
-#    if len(set(t_points))==1:
-#        #if all t_points are the same, then simplify calculation by not 
-#        #using a symbolic variable
-#        t = t_points[0]
-#    piecewise_args = [(b_s(t_), s < t_+1) for t_ in range(max(T_points))]
-#    b = sp.Piecewise(*piecewise_args, (b_s(t_points[-1]), True))
-#    out = {}
-#    for t, T in zip(t_points, T_points):
-#        import pdb; pdb.set_trace()
-#        h = sp.integrate(sp.integrate(sp.exp(-alpha*(u-s))*b, (s, t, u)), (u, t, T))
-#        out[(t,T)] = float(h) if return_float else h
-##    h = sp.integrate(sp.integrate(sp.exp(-alpha*(u-s))*b, (s, t, u)), (u, t, T))
-##    import pdb; pdb.set_trace()
-##    out = {(t_, T_): h.subs(t,t_).subs(T,T_).evalf() for t_, T_ in zip(t_points, T_points)}
-##    if return_float:
-##        for k in out:
-##            out[k] = float(out[k])
-#    return out
-#
-#
-#def hw_yearly_calibrate_b_function(bond_prices:dict, alpha, sigma):
-#    p_0 = 1 #bond price at time t
-#    p_1 = bond_prices[1]
-#    r_zero = -(np.log(p_1)-np.log(p_0))
-#    b = sp.symbols(' '.join(["b{}".format(i) for i in bond_prices]), real=True, positive=True)
-#    if len(bond_prices)==1:
-#        b = (b,)
-#    b = {i:b[i] for i, j in enumerate(bond_prices.keys())}
-#    b_s = lambda t:b[t]
-#    from scipy.optimize import bisect
-#    for T in bond_prices:
-#        h = get_HWyearly_h_fc(b_s=b_s, t_points=[0]*T, T_points=range(1, T+1),
-#                              alpha=alpha, return_float=False)
-#        h_fc = lambda t, T:h[(t,T)]
-#        price = hw_bond_price(alpha, T=T, t=0, h=h_fc, sigma=sigma, r=r_zero, lib=sp)
-#        price = price - bond_prices[T]
-#        #import pdb; pdb.set_trace()
-#        #b_solved = sp.solve(price, b[T-1])
-#        b_solved = bisect(lambda x:float(price.subs(b[T-1], x)), 0,5)
-#        b[T-1] = b_solved
-#    return b
+def h_from_B(B_T, T, t, r, alpha, sigma):
+    """returns the value of h(t,T) given b(t,T) and alpha
+    B_T: float
+        bond price for maturity T
+    r: float
+        r(t)
+    t: float
+        valuation time
+    T: float
+        maturity of bond
+    alpha: float
+        mean reversion speed
+    sigma: float
+        hw volatility
+    """
+    A = 1/alpha*(1-np.exp(-alpha*(T-t)))
+    h = (-1/alpha*(np.log(B_T)+A*r)+sigma**2/2/alpha**3*((T-t)
+                            +1/2/alpha*(1-np.exp(-2*alpha*(T-t)))
+                            +2/alpha*(np.exp(-alpha*(T-t))-1)))
+    return h
+
+def b_from_h(t, T, h_T, h_T_1, b, alpha):
+    """return b(T-1) (since b is shifted left)
+    from h(t,T) and h(t,T-1)
+    
+    b: 1-d array
+        b values upto T-2
+    """
+#    print(t, T, h_T, h_T_1)
+    k_p = (np.exp(alpha)-1)/alpha
+    k_m = (1-np.exp(-alpha))/alpha
+    next_b = (h_T- h_T_1-k_p*k_m*sum([b[i]*np.exp(-alpha*(T-1-i)) for i in range(t,T-1)]))
+    next_b = next_b * alpha**2 / (alpha+np.exp(-alpha)-1)
+    return next_b
+
+def hw_yearly_calibrate_b_function(bond_prices:dict, alpha, sigma):
+    p_0 = 1 #bond price at time t
+    p_1 = bond_prices[1]
+    r_zero = -(np.log(p_1)-np.log(p_0))
+    h_T_1 = 0
+    b = []
+    for T in bond_prices:
+        h = h_from_B(B_T=bond_prices[T], T=T, t=0, r=r_zero, alpha=alpha,
+                     sigma=sigma)
+        b_T_1 = b_from_h(t=0, T=T, h_T=h, h_T_1=h_T_1, b=b, alpha=alpha)
+        b.append(b_T_1)
+        h_T_1 = h
+    return b

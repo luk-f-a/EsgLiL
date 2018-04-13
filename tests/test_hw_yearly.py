@@ -14,7 +14,7 @@ from esglil import rng
 from esglil.esg import ESG
 from esglil.common import TimeDependentParameter
 from esglil.ir_models import HWyearlyShortRate
-from esglil.ir_models import get_hw_yearly_g
+from esglil.ir_models import get_hw_yearly_g, hw_bond_price
 from esglil import ir_models
 from esglil.model_zoo import get_hw_gbm_yearly
 import numpy as np
@@ -42,56 +42,87 @@ class hw_test_short_rate(unittest.TestCase):
         self.assertEqual(type(df_full_run), pd.DataFrame,
                          'incorrect type')
         self.assertEqual(df_full_run.shape, (10, 2*40))
-        ax=None
+#        ax=None
 #        for sim, r in df_full_run[['r']].stack().groupby(level='sim'):
 #            if ax is None:
 #                ax = r.reset_index('sim')['r'].plot()
 #            else:
 #                ax = r.reset_index('sim')['r'].plot(ax=ax)
 
-#class hw1f_leakage_tests(unittest.TestCase):    
-#    def setUp(self):
-#
-#        bond_rate = 0.02
-#        bond_prices = {i:(1+bond_rate)**(-i) for i in range(1,15)}        
-#        a = 0.01
-#        sigma = 0.01
-#
-#        B,f, p =  ir_models.hw1f_B_function(bond_prices, a, sigma,
-#                                       return_p_and_f=True)
-#        delta_t = 1/50
-#        dW = rng.NormalRng(dims=1, sims=50000, mean=[0], cov=[[delta_t]])
-#        B = TimeDependentParameter(function=B)
-#        r = HullWhite1fShortRate(B=B, a=a, sigma=sigma, dW=dW)
-#        #T = np.array(list(bond_prices.keys()))
-#        P = {'Bond_{}'.format(i):HullWhite1fBondPrice(a=a, r=r, sigma=sigma, 
-#                                 P_0=p,f=f, T=i) for i in range(1,41)}
-#        C = HullWhite1fCashAccount(r=r)
-#        self.esg = ESG(dt_sim=delta_t, dW=dW, B=B, r=r, cash=C, **P)
-#            
-#    def test_cash_to_initial_bond_prices(self):
-#        """Test that starting bond prices can be recovered
-#            Each bond is tested at every time step and its implied rate is calculated
-#            no difference larger than 10bps is allowed
-#        """
-#        
-#        df_sims = self.esg.run_multistep_to_pandas(dt_out=1, max_t=40)
-#        stck_df_sims = df_sims.stack('time')
-#        means = stck_df_sims.div(stck_df_sims['cash'], axis='index').groupby('time').mean()
-#        del means['r']
-#        del means['B']
-#        del means['cash']
-#        del means['dW']
-#        rates = np.stack([means['Bond_'+str(i)].values**(-1/i)-1 
+
+        
+class hw1f_leakage_tests(unittest.TestCase):    
+    def setUp(self):
+
+        bond_rate = 0.02
+        bond_prices = {i:(1+bond_rate)**(-i) for i in range(1,50)}        
+        
+        alpha = 0.01
+        sigma = 0.01
+
+        b_vec =  ir_models.hw_yearly_calibrate_b_function(bond_prices, alpha, 
+                                                           sigma)
+        b = lambda t:b_vec[int(t)]
+        g = get_hw_yearly_g(b_s=b, alpha=alpha)
+        r_zero = ir_models.calc_r_zero(bond_prices[1])
+
+        h = ir_models.get_hw_yearly_h(b=b, alpha=alpha)
+        Z = rng.NormalRng(dims=2, sims=50000, mean=[0,0], cov=np.diag([1,1]))
+        r = HWyearlyShortRate(g=g, sigma_hw=sigma, alpha_hw=alpha, 
+                          r_zero=r_zero, Z=Z[0])
+        #T = np.array(list(bond_prices.keys()))
+        P = {'Bond_{}'.format(i):ir_models.HWyearlyBondPrice(alpha=alpha, r=r, sigma_hw=sigma, 
+                                 h=h, T=i) for i in range(1,41)}
+        C = ir_models.HWyearlyCashAccount(h=h, sigma_hw=sigma,  alpha_hw=alpha, 
+                               r=r, Z=Z[1])
+        self.esg = ESG(dt_sim=1, Z=Z, cash=C, r=r,  **P)
+        #save variablesw for test bond price
+        self.h = h
+        self.bond_prices = bond_prices
+        self.alpha = alpha
+        self.sigma = sigma
+        self.r_zero = r_zero
+        
+    def test_bond_prices(self):
+        cal_prices = {T:hw_bond_price(self.alpha, T, 0, self.h, 
+                                    self.sigma, self.r_zero) 
+                        for T in range(1,50)}
+        self.assertAlmostEqual(0,sum([abs(self.bond_prices[t] - cal_prices[t]) for t in range(1,50)]))
+        
+        
+    def test_cash_to_initial_bond_prices(self):
+        """Test that starting bond prices can be recovered
+            Each bond is tested at every time step and its implied rate is calculated
+            no difference larger than 10bps is allowed
+        """
+        
+        df_sims = self.esg.run_multistep_to_pandas(dt_out=1, max_t=40)
+        stck_df_sims = df_sims.stack('time')
+        means = stck_df_sims.div(stck_df_sims['cash'], axis='index').groupby('time').mean()
+        
+        del means['r']
+        del means['cash']
+        del means['Z_0']
+        del means['Z_1']
+#        rates = np.stack([means['Bond_'+str(i)][1:i].values**(-1/i)-1 
 #                                      for i in range(1,41)], axis=0)
-#        with self.subTest():
-#            self.assertTrue(np.allclose(rates.mean(), 0.02, atol=0.001))
-#        with self.subTest():
-#            self.assertTrue(np.allclose(rates.mean(axis=0), 0.02, atol=0.003))
-#        with self.subTest():
-#            self.assertTrue(np.allclose(rates.mean(axis=1), 0.02, atol=0.003))
-#        with self.subTest():
-#            self.assertTrue(np.allclose(rates, 0.02, atol=0.005))
+        rates = pd.concat([pd.DataFrame(means['Bond_'+str(i)][1:i].values**(-1/i)-1 
+                                      for i in range(1,41))])
+
+        
+        with self.subTest():
+            self.assertTrue(np.allclose(rates.mean().mean(), 0.02, atol=0.001))
+        
+        with self.subTest():
+            self.assertTrue(np.allclose(rates.mean(axis=0), 0.02, atol=0.001))
+        with self.subTest():
+            self.assertTrue(np.allclose(rates.mean(axis=1).dropna(), 0.02, atol=0.001))
+        with self.subTest():
+            self.assertTrue(np.allclose(rates.dropna(), 0.02, atol=0.005))
+            
+            
+            
+### UPDATED UNTIL HERE            ##################3
 #        
 #        
 #class hw1f_sigma_calibration_tests(unittest.TestCase):    
@@ -275,15 +306,15 @@ class hw_test_short_rate(unittest.TestCase):
 #       
 #        self.assertTrue(res)
 #   
-class hw_gbm_model(unittest.TestCase):            
-    def test_rng(self):
-        bond_prices= {i: (1+0.002)**(-i) for i in range(1,100)}
-        alpha = 0.5
-        hw_sigma = 0.02
-        esg = get_hw_gbm_yearly(sims=5, hw_alpha=alpha, hw_sigma=hw_sigma,
-                                rho=0.2, bond_prices=bond_prices)
-        
-        print(esg.run_multistep_to_pandas(dt_out=1, max_t=2))
+#class hw_gbm_model(unittest.TestCase):            
+#    def test_rng(self):
+#        bond_prices= {i: (1+0.002)**(-i) for i in range(1,100)}
+#        alpha = 0.5
+#        hw_sigma = 0.02
+#        esg = get_hw_gbm_yearly(sims=5, hw_alpha=alpha, hw_sigma=hw_sigma,
+#                                rho=0.2, bond_prices=bond_prices)
+#        
+#        print(esg.run_multistep_to_pandas(dt_out=1, max_t=2))
 if __name__ == '__main__':
     unittest.main()              
             
