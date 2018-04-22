@@ -121,7 +121,13 @@ class PCAIndWienerIncr(Rng):
                              size=(self.dims*self.years, self.sims))
         from sklearn.decomposition import PCA
         pca = PCA(self.dims*self.years)
-        self.gen_rn = pca.fit_transform(self.gen_rn.T).reshape(years, dims, sims)
+#        print(np.round(np.corrcoef(self.gen_rn, rowvar=True),2))
+#        print('----')
+#        print(np.round(np.corrcoef(pca.fit_transform(self.gen_rn.T), rowvar=False),2))
+    
+        self.gen_rn = pca.fit_transform(self.gen_rn.T).T.reshape(years, dims, sims)
+#        print(np.round(np.corrcoef(self.gen_rn.reshape(years* dims, sims), rowvar=True),2))
+    
         self.current_year = 0
         
     def generate(self):
