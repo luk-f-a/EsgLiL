@@ -86,3 +86,6 @@ venv.bak/
 
 # mypy
 .mypy_cache/ 
+
+#folder
+esglil/testing_ground/

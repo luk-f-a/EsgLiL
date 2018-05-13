@@ -1,0 +1,18 @@
+USER:
+conda install numpy
+ 
+
+    OPTIONAL
+    conda install matplotlib --no-update-dependencies
+    conda install dask --no-update-dependencies
+    conda install pandas --no-update-dependencies
+
+DEVELOPER:
+conda install scipy --no-update-dependencies
+conda install matplotlib --no-update-dependencies
+conda install spyder --no-update-dependencies
+
+
+    OPTIONAL:
+    conda install cython --no-update-dependencies
+
