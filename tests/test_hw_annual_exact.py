@@ -13,9 +13,11 @@ sys.path.append(os.path.dirname(os.getcwd()))
 from esglil import rng
 from esglil.esg import ESG
 from esglil.common import TimeDependentParameter
-from esglil.ir_models import HWyearlyShortRate
-from esglil.ir_models import get_hw_yearly_g, hw_bond_price
-from esglil import ir_models
+from esglil.ir_models.hw1f_annual_exact import (ShortRate, CashAccount,
+                                                BondPrice)
+from esglil.ir_models.hw1f_annual_exact import (get_g_function, get_h_function,
+                                                calibrate_b_function, calc_r_zero)
+from esglil.ir_models.hw1f_annual_exact import hw_bond_price
 from esglil.model_zoo import get_hw_gbm_yearly
 import numpy as np
 import pandas as pd
@@ -32,8 +34,8 @@ class hw_test_short_rate(unittest.TestCase):
         sigma = 0.01
         b = 0.01
         b_fc = lambda t:b
-        g = get_hw_yearly_g(b_s=b_fc, alpha=alpha)
-        r = HWyearlyShortRate(g=g, sigma_hw=sigma, 
+        g = get_g_function(b_s=b_fc, alpha=alpha)
+        r = ShortRate(g=g, sigma_hw=sigma, 
                               alpha_hw=alpha, r_zero=0.02, Z=Z)
         self.esg = ESG(dt_sim=delta_t, Z=Z, r=r)
 
@@ -60,20 +62,20 @@ class hw1f_leakage_tests(unittest.TestCase):
         alpha = 0.01
         sigma = 0.01
 
-        b_vec =  ir_models.hw_yearly_calibrate_b_function(bond_prices, alpha, 
+        b_vec =  calibrate_b_function(bond_prices, alpha, 
                                                            sigma)
         b = lambda t:b_vec[int(t)]
-        g = get_hw_yearly_g(b_s=b, alpha=alpha)
-        r_zero = ir_models.calc_r_zero(bond_prices[1])
+        g = get_g_function(b_s=b, alpha=alpha)
+        r_zero = calc_r_zero(bond_prices[1])
 
-        h = ir_models.get_hw_yearly_h(b=b, alpha=alpha)
+        h = get_h_function(b=b, alpha=alpha)
         Z = rng.NormalRng(dims=2, sims=50000, mean=[0,0], cov=np.diag([1,1]))
-        r = HWyearlyShortRate(g=g, sigma_hw=sigma, alpha_hw=alpha, 
+        r = ShortRate(g=g, sigma_hw=sigma, alpha_hw=alpha, 
                           r_zero=r_zero, Z=Z[0])
         #T = np.array(list(bond_prices.keys()))
-        P = {'Bond_{}'.format(i):ir_models.HWyearlyBondPrice(alpha=alpha, r=r, sigma_hw=sigma, 
+        P = {'Bond_{}'.format(i):BondPrice(alpha=alpha, r=r, sigma_hw=sigma, 
                                  h=h, T=i) for i in range(1,41)}
-        C = ir_models.HWyearlyCashAccount(h=h, sigma_hw=sigma,  alpha_hw=alpha, 
+        C = CashAccount(h=h, sigma_hw=sigma,  alpha_hw=alpha, 
                                r=r, Z=Z[1])
         self.esg = ESG(dt_sim=1, Z=Z, cash=C, r=r,  **P)
         #save variablesw for test bond price
@@ -84,21 +86,22 @@ class hw1f_leakage_tests(unittest.TestCase):
         self.r_zero = r_zero
         
     def test_bond_prices(self):
-        cal_prices = {T:hw_bond_price(self.alpha, T, 0, self.h, 
-                                    self.sigma, self.r_zero) 
-                        for T in range(1,50)}
-        self.assertAlmostEqual(0,sum([abs(self.bond_prices[t] - cal_prices[t]) for t in range(1,50)]))
+        cal_prices = {T:hw_bond_price(self.alpha, T, 0, self.h, self.sigma, 
+                                      self.r_zero) for T in range(1,50)}
+        self.assertAlmostEqual(0,sum([abs(self.bond_prices[t] - cal_prices[t]) 
+                                        for t in range(1,50)]))
         
         
     def test_cash_to_initial_bond_prices(self):
         """Test that starting bond prices can be recovered
-            Each bond is tested at every time step and its implied rate is calculated
-            no difference larger than 10bps is allowed
+            Each bond is tested at every time step and its implied rate 
+            is calculated no difference larger than 10bps is allowed
         """
         
         df_sims = self.esg.run_multistep_to_pandas(dt_out=1, max_t=40)
         stck_df_sims = df_sims.stack('time')
-        means = stck_df_sims.div(stck_df_sims['cash'], axis='index').groupby('time').mean()
+        means = (stck_df_sims.div(stck_df_sims['cash'], axis='index')
+                            .groupby('time').mean())
         
         del means['r']
         del means['cash']
@@ -116,7 +119,8 @@ class hw1f_leakage_tests(unittest.TestCase):
         with self.subTest():
             self.assertTrue(np.allclose(rates.mean(axis=0), 0.02, atol=0.001))
         with self.subTest():
-            self.assertTrue(np.allclose(rates.mean(axis=1).dropna(), 0.02, atol=0.001))
+            self.assertTrue(np.allclose(rates.mean(axis=1).dropna(), 0.02, 
+                                        atol=0.001))
         with self.subTest():
             self.assertTrue(np.allclose(rates.dropna(), 0.02, atol=0.005))
             

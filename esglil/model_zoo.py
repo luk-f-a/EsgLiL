@@ -7,21 +7,11 @@ Created on Sat Dec  9 17:39:15 2017
 """
 import numpy as np
 from esglil.common import TimeDependentParameter, StochasticVariable
-from esglil.ir_models import (HullWhite1fShortRate, HullWhite1fCashAccount, 
-                              HullWhite1fBondPrice, hw1f_B_function,
-                              HullWhite1fConstantMaturityBondPrice,
-                              ShortRateSimpleAnnualModel,
-                              CashAccountSimpleAnnualModel,
-                              HWyearlyStochasticDriver,
-                              get_hw_yearly_g,
-                              HWyearlyShortRate,
-                              calc_r_zero,
-                              HWyearlyCashAccount,
-                              get_hw_yearly_h,
-                              HWyearlyConstantMaturityBondPrice,
-                              HWyearlyBondPrice,
-                              hw_yearly_calibrate_b_function)
-from esglil.ir_models import DeterministicBankAccount
+from esglil.ir_models import hw1f_euler as hw1feuler
+from esglil.ir_models import hw1f_annual_exact as hw1fexact
+from esglil.ir_models import simple_annual_model as simple_annual
+
+from esglil.ir_models.common import DeterministicBankAccount
 from esglil.esg import ESG
 from esglil.equity_models import (GeometricBrownianMotion, GBM_exact,
                                   EquitySimpleAnnualModel, EquityExcessReturns)
@@ -42,16 +32,16 @@ def esg_e_sr_bonds_cash(delta_t, sims, rho, bond_prices, hw_a = 0.001,
     indep_cov = np.diag([delta_t, delta_t])
     ind_dW = rng.NormalRng(dims=2, sims=sims, mean=[0, 0], cov=indep_cov)
     dW = rng.CorrelatedRV(rng=ind_dW, input_cov=indep_cov , target_cov=dep_cov)
-    B_fc, f, p0 = hw1f_B_function(bond_prices=bond_prices, a=hw_a, sigma=hw_sigma,
+    B_fc, f, p0 = hw1feuler.B_function(bond_prices=bond_prices, a=hw_a, sigma=hw_sigma,
                            return_p_and_f=True)
     B = TimeDependentParameter(B_fc)
-    r = HullWhite1fShortRate(B=B, a=hw_a, sigma=hw_sigma, dW=dW[0])
+    r = hw1feuler.ShortRate(B=B, a=hw_a, sigma=hw_sigma, dW=dW[0])
     
     T = np.array(list(bond_prices.keys())).reshape(-1,1)
-    P = HullWhite1fBondPrice(a=hw_a, r=r, sigma=hw_sigma,  
+    P = hw1feuler.BondPrice(a=hw_a, r=r, sigma=hw_sigma,  
                              P_0=p0, f=f, T=T)
 
-    C = HullWhite1fCashAccount(r=r)
+    C = hw1feuler.CashAccount(r=r)
     W = rng.WienerProcess(dW)
     ind_W = rng.WienerProcess(ind_dW)
     S = GeometricBrownianMotion(mu=r, sigma=gbm_sigma, dW=dW[1])
@@ -77,12 +67,12 @@ def esg_e_sr_bonds_cash_2levels(delta_t_l1, delta_t_l2, sims, rho, bond_prices, 
     B_fc, f, p0 = hw1f_B_function(bond_prices=bond_prices, a=hw_a, sigma=hw_sigma,
                            return_p_and_f=True)
     B = TimeDependentParameter(B_fc)
-    r = HullWhite1fShortRate(B=B, a=hw_a, sigma=hw_sigma, dW=dW[0])
+    r = hw1feuler.ShortRate(B=B, a=hw_a, sigma=hw_sigma, dW=dW[0])
     
     if const_tau is not None:
-        constP = HullWhite1fConstantMaturityBondPrice(a=hw_a, r=r, sigma=hw_sigma,  
+        constP = hw1feuler.ConstantMaturityBondPrice(a=hw_a, r=r, sigma=hw_sigma,  
                                  P_0=p0, f=f, tau=const_tau.reshape(-1,1))
-    C = HullWhite1fCashAccount(r=r)
+    C = hw1feuler.CashAccount(r=r)
     W = rng.WienerProcess(dW)
     ind_W = rng.WienerProcess(ind_dW)
     S = GeometricBrownianMotion(mu=r, sigma=gbm_sigma, dW=dW[1])
@@ -130,11 +120,11 @@ def get_gbm_hw_nobonds(delta_t, sims,  rho=None, bond_prices=None,
     dep_cov = C@corr@C.T 
     indep_cov = np.diag([delta_t, delta_t])
     dW = rng.CorrelatedRV(rng=ind_dW, input_cov=indep_cov , target_cov=dep_cov)
-    B_fc = hw1f_B_function(bond_prices=bond_prices, a=hw_a, sigma=hw_sigma,
+    B_fc = hw1feuler.B_function(bond_prices=bond_prices, a=hw_a, sigma=hw_sigma,
                            return_p_and_f=False)
     B = TimeDependentParameter(B_fc)
-    r = HullWhite1fShortRate(B=B, a=hw_a, sigma=hw_sigma, dW=dW[0])
-    C = HullWhite1fCashAccount(r=r)
+    r = hw1feuler.ShortRate(B=B, a=hw_a, sigma=hw_sigma, dW=dW[0])
+    C = hw1feuler.CashAccount(r=r)
     W = rng.WienerProcess(dW)
     ind_W = rng.WienerProcess(ind_dW)
     S = GeometricBrownianMotion(mu=r, sigma=gbm_sigma, dW=dW[1])
@@ -181,21 +171,21 @@ def get_gbm_hw_2levels(delta_t_l1, delta_t_l2, sims, rho, bond_prices,
      
     opt_kwargs = {}
     if const_tau is not None:
-        hw_const_bond = HullWhite1fConstantMaturityBondPrice
+        hw_const_bond = hw1feuler.ConstantMaturityBondPrice
         constP = hw_const_bond(a=hw_a, r=esg_l1['r'], sigma=hw_sigma,  
                                P_0=p0, f=f, tau=const_tau.reshape(-1,1))
         opt_kwargs['constP'] = constP
         
     if out_bonds is not None:
         T = out_bonds
-        P = HullWhite1fBondPrice(a=hw_a, r=esg_l1['r'], sigma=hw_sigma, 
+        P = hw1feuler.BondPrice(a=hw_a, r=esg_l1['r'], sigma=hw_sigma, 
                                  P_0=p0, f=f, T=T)
         opt_kwargs['P'] = P
  
     esg_l2 = ESG(dt_sim=delta_t_l2, esg_l1=esg_l1, **opt_kwargs)
     return esg_l2
 
-def get_hw_gbm_yearly(sims, rho, bond_prices, 
+def get_hw_gbm_annual(sims, rho, bond_prices, 
                        hw_alpha=0.5, hw_sigma=0.01,
                        gbm_sigma=0.2, const_tau=None, out_bonds=None,
                        custom_ind_z=None):
@@ -234,22 +224,22 @@ def get_hw_gbm_yearly(sims, rho, bond_prices,
         ind_Z = rng.NormalRng(dims=3, sims=sims, mean=[0, 0, 0], cov=indep_cov)
     
     
-    Z_r_c  = HWyearlyStochasticDriver(ind_Z[[0,1]], hw_sigma, hw_alpha)
+    Z_r_c  = hw1fexact.StochasticDriver(ind_Z[[0,1]], hw_sigma, hw_alpha)
     Z_r_e = rng.CorrelatedRV(ind_Z[[0,2]], input_cov=np.diag([1,1]), 
                             target_cov=np.array([[1,rho], [rho,1]]))
-    b_vec = hw_yearly_calibrate_b_function(bond_prices, hw_alpha, hw_sigma)
+    b_vec = hw1fexact.calibrate_b_function(bond_prices, hw_alpha, hw_sigma)
     b = lambda t:b_vec[int(t)]
-    g = get_hw_yearly_g(b_s=b, alpha=hw_alpha)
-    r_zero = calc_r_zero(bond_prices[1])
-    r = HWyearlyShortRate(g=g, sigma_hw=hw_sigma, alpha_hw=hw_alpha, 
+    g = hw1fexact.get_g_function(b_s=b, alpha=hw_alpha)
+    r_zero = hw1fexact.calc_r_zero(bond_prices[1])
+    r = hw1fexact.ShortRate(g=g, sigma_hw=hw_sigma, alpha_hw=hw_alpha, 
                           r_zero=r_zero, Z=Z_r_c[0])
-    h = get_hw_yearly_h(b=b, alpha=hw_alpha)
-    cash = HWyearlyCashAccount(h=h, sigma_hw=hw_sigma,  alpha_hw=hw_alpha, 
+    h = hw1fexact.get_h_function(b=b, alpha=hw_alpha)
+    cash = hw1fexact.CashAccount(h=h, sigma_hw=hw_sigma,  alpha_hw=hw_alpha, 
                                r=r, Z=Z_r_c[1])
     S = EquityExcessReturns(cash=cash, sigma=gbm_sigma, Z=Z_r_e[1])
     opt_kwargs = {}
     if const_tau is not None:
-        hw_const_bond = HWyearlyConstantMaturityBondPrice
+        hw_const_bond = hw1fexact.ConstantMaturityBondPrice
         constP = hw_const_bond(alpha=hw_alpha, r=r, sigma=hw_sigma,  
                                P_0=bond_prices, tau=const_tau.reshape(-1,1),
                                h=h)
@@ -257,7 +247,7 @@ def get_hw_gbm_yearly(sims, rho, bond_prices,
         
     if out_bonds is not None:
         T = out_bonds
-        P = HWyearlyBondPrice(alpha=hw_alpha, r=r, sigma_hw=hw_sigma, 
+        P = hw1fexact.BondPrice(alpha=hw_alpha, r=r, sigma_hw=hw_sigma, 
                                  h=h, T=T)
         opt_kwargs['P'] = P
         
@@ -335,9 +325,9 @@ def esg_simple_annual_model(sims, generator, custom_z=None):
     indep_cov = np.diag([1, 1])
     N = rng.CorrelatedRV(rng=ind_z, input_cov=indep_cov , target_cov=dep_cov)
     
-    r = ShortRateSimpleAnnualModel(b=b, a=a, sigma=sigma_r, r_zero=r_zero,
+    r = simple_annual.ShortRate(b=b, a=a, sigma=sigma_r, r_zero=r_zero,
                                    N=N[0])
-    C = CashAccountSimpleAnnualModel(r=r)
+    C = simple_annual.CashAccount(r=r)
     S = EquitySimpleAnnualModel(r=r, sigma=sigma_e, N=N[1], s_zero=100)
     esg = ESG(dt_sim=1, ind_Z=ind_z, N=N, r=r, cash=C,  S=S)
     return esg

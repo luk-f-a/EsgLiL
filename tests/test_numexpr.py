@@ -13,7 +13,8 @@ sys.path.append(os.path.dirname(os.getcwd()))
 from esglil import rng
 from esglil import equity_models
 from esglil.common import TimeDependentParameter
-from esglil.ir_models import HullWhite1fShortRate, HullWhite1fCashAccount, DeterministicBankAccount, HullWhite1fBondPrice, hw1f_B_function
+from esglil.ir_models.hw1f_euler import ShortRate, CashAccount, BondPrice, B_function
+from esglil.ir_models.common import DeterministicBankAccount
 from esglil.esg import ESG
 import numpy as np
 import datetime
@@ -67,15 +68,15 @@ class numexpr_test(unittest.TestCase):
         a = 0.001
         sigma_r = 0.01
         B = TimeDependentParameter(function=lambda t: 0.01)
-        r = HullWhite1fShortRate(B=B, a=a, sigma=sigma_r, dW=dW[0])
+        r = ShortRate(B=B, a=a, sigma=sigma_r, dW=dW[0])
         bond_prices = {t: 1.02**-t for t in range(1,41)}
         T = np.array(list(bond_prices.keys())).reshape(-1,1)
-        B_fc, f, p0 = hw1f_B_function(bond_prices=bond_prices, a=hw_a, sigma=hw_sigma,
+        B_fc, f, p0 = B_function(bond_prices=bond_prices, a=hw_a, sigma=hw_sigma,
                            return_p_and_f=True)
-        P = HullWhite1fBondPrice(a=hw_a, r=r, sigma=hw_sigma,  
+        P = BondPrice(a=hw_a, r=r, sigma=hw_sigma,  
                              P_0=p0, f=f, T=T)
         S = equity_models.GeometricBrownianMotion(mu=r, sigma=0.2, dW=dW[1])
-        C = HullWhite1fCashAccount(r=r)
+        C = CashAccount(r=r)
         cls.esg = ESG(dt_sim=delta_t, dW=dW, r=r, S=S, C=C, P=P)
         tic = datetime.datetime.now()
         cls.vars_10 = cls.esg.run_multistep_to_dict(dt_out=1, max_t=40, 
@@ -94,15 +95,15 @@ class numexpr_test(unittest.TestCase):
         a = 0.001
         sigma_r = 0.01
         B = TimeDependentParameter(function=lambda t: 0.01)
-        r = HullWhite1fShortRate(B=B, a=a, sigma=sigma_r, dW=dW[0])
+        r = ShortRate(B=B, a=a, sigma=sigma_r, dW=dW[0])
         bond_prices = {t: 1.02**-t for t in range(1,41)}
         T = np.array(list(bond_prices.keys())).reshape(-1,1)
-        B_fc, f, p0 = hw1f_B_function(bond_prices=bond_prices, a=hw_a, sigma=hw_sigma,
+        B_fc, f, p0 = B_function(bond_prices=bond_prices, a=hw_a, sigma=hw_sigma,
                            return_p_and_f=True)
-        P = HullWhite1fBondPrice(a=hw_a, r=r, sigma=hw_sigma,  
+        P = BondPrice(a=hw_a, r=r, sigma=hw_sigma,  
                              P_0=p0, f=f, T=T)
         S = equity_models.GeometricBrownianMotion(mu=r, sigma=0.2, dW=dW[1])
-        C = HullWhite1fCashAccount(r=r)
+        C = CashAccount(r=r)
         cls.esg = ESG(dt_sim=delta_t, dW=dW, r=r, S=S, C=C, P=P)
         tic = datetime.datetime.now()
         cls.vars_10_ne = cls.esg.run_multistep_to_dict(dt_out=1, max_t=40, 

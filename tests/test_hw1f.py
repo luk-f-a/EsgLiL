@@ -13,7 +13,7 @@ sys.path.append(os.path.dirname(os.getcwd()))
 from esglil import rng
 from esglil.esg import ESG
 from esglil.common import TimeDependentParameter
-from esglil.ir_models import HullWhite1fShortRate, HullWhite1fBondPrice, HullWhite1fCashAccount
+from esglil.ir_models.hw1f_euler import ShortRate, BondPrice, CashAccount
 from esglil import ir_models
 import numpy as np
 import pandas as pd
@@ -29,7 +29,7 @@ class hw1f_test_short_rate(unittest.TestCase):
         a = 0.001
         sigma = 0.01
         B = TimeDependentParameter(function=lambda t: 0.01)
-        r = HullWhite1fShortRate(B=B, a=a, sigma=sigma, dW=dW)
+        r = ShortRate(B=B, a=a, sigma=sigma, dW=dW)
         self.esg = ESG(dt_sim=delta_t, dW=dW, B=B, r=r)
 
     def test_shape(self):
@@ -52,16 +52,16 @@ class hw1f_leakage_tests(unittest.TestCase):
         a = 0.01
         sigma = 0.01
 
-        B,f, p =  ir_models.hw1f_B_function(bond_prices, a, sigma,
+        B,f, p =  ir_models.hw1f_euler.B_function(bond_prices, a, sigma,
                                        return_p_and_f=True)
         delta_t = 1/50
         dW = rng.NormalRng(dims=1, sims=50000, mean=[0], cov=[[delta_t]])
         B = TimeDependentParameter(function=B)
-        r = HullWhite1fShortRate(B=B, a=a, sigma=sigma, dW=dW)
+        r = ShortRate(B=B, a=a, sigma=sigma, dW=dW)
         #T = np.array(list(bond_prices.keys()))
-        P = {'Bond_{}'.format(i):HullWhite1fBondPrice(a=a, r=r, sigma=sigma, 
+        P = {'Bond_{}'.format(i):BondPrice(a=a, r=r, sigma=sigma, 
                                  P_0=p,f=f, T=i) for i in range(1,41)}
-        C = HullWhite1fCashAccount(r=r)
+        C = CashAccount(r=r)
         self.esg = ESG(dt_sim=delta_t, dW=dW, B=B, r=r, cash=C, **P)
             
     def test_cash_to_initial_bond_prices(self):
@@ -132,18 +132,18 @@ class hw1f_sigma_calibration_tests(unittest.TestCase):
                  {'normal_vol': 0.007646, 'start': 7, 'strike': 'ATM', 'tenor': 7},
                  {'normal_vol': 0.007412, 'start': 10, 'strike': 'ATM', 'tenor': 7}]
         a = 0.01
-        sigma = ir_models.hw1f_sigma_calibration(self.bond_prices, 
+        sigma = ir_models.hw1f_euler.sigma_calibration(self.bond_prices, 
                                                     swaption_prices, a)
 
         B =  ir_models.hw1f_B_function(self.bond_prices, a, sigma)
         delta_t = 1/25
         dW = rng.NormalRng(dims=1, sims=1000, mean=[0], cov=[[delta_t]])
         B = TimeDependentParameter(function=B)
-        r = HullWhite1fShortRate(B=B, a=a, sigma=sigma, dW=dW)
+        r = ShortRate(B=B, a=a, sigma=sigma, dW=dW)
         #T = np.array(list(bond_prices.keys()))
-        P = {'Bond_{}'.format(i):HullWhite1fBondPrice(B=B, a=a, r=r, sigma=sigma, dW=dW, 
+        P = {'Bond_{}'.format(i):BondPrice(B=B, a=a, r=r, sigma=sigma, dW=dW, 
                                  P_0=self.bond_prices[i], T=i) for i in range(1,41)}
-        C = HullWhite1fCashAccount(r=r)
+        C = CashAccount(r=r)
         self.esg = ESG(dt_sim=delta_t, dW=dW, B=B, r=r, cash=C, **P)
             
     def test_cash_to_initial_bond_prices(self):
@@ -179,7 +179,7 @@ class hw1f_stat_test_short_rate(unittest.TestCase):
         mean_rev_level = 0.05
         B = TimeDependentParameter(function=lambda t: mean_rev_level)
         sigma = 0.01
-        r = HullWhite1fShortRate(B=B, a=a, sigma=sigma, dW=self.dW)
+        r = ShortRate(B=B, a=a, sigma=sigma, dW=self.dW)
         self.esg = ESG(dt_sim=self.delta_t, dW=self.dW, B=B, r=r)
         self.df_full_run = self.esg.run_multistep_to_pandas(dt_out=1, max_t=10)
        
@@ -195,7 +195,7 @@ class hw1f_stat_test_short_rate(unittest.TestCase):
         B_fc = lambda t: mean_rev_level/(t+0.1)
         B = TimeDependentParameter(function= B_fc)
         sigma = 0.01
-        r = HullWhite1fShortRate(B=B, a=a, sigma=sigma, dW=self.dW)
+        r = ShortRate(B=B, a=a, sigma=sigma, dW=self.dW)
         self.esg = ESG(dt_sim=self.delta_t, dW=self.dW, B=B, r=r)
         self.df_full_run = self.esg.run_multistep_to_pandas(dt_out=1, max_t=10)
        
@@ -219,7 +219,7 @@ class hw1f_stat_test_short_rate(unittest.TestCase):
         B_fc = lambda t: mean_rev_level + 0.1*t
         B = TimeDependentParameter(function= B_fc)
         b = lambda t: 0.1 #derivative of B_fc
-        r = HullWhite1fShortRate(B=B, a=a, sigma=sigma, dW=self.dW)
+        r = ShortRate(B=B, a=a, sigma=sigma, dW=self.dW)
         self.esg = ESG(dt_sim=self.delta_t, dW=self.dW, B=B, r=r)
         df_full_run = self.esg.run_multistep_to_pandas(dt_out=1, max_t=T)['r']
         
