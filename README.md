@@ -1,6 +1,6 @@
 # Introduction
 
-EsgLiL is a parallel and distributed framework for Monte Carlo simulations. It includes a collection of models for generating Monte scenarios. While the framework is general, the models are oriented to uses in finance and insurance.
+EsgLiL is a parallel and distributed framework for Monte Carlo simulations. It includes a collection of models for generating scenarios. While the framework is general, the models are oriented to uses in finance and insurance.
 
 # Motivation
 
