@@ -535,13 +535,14 @@ class PreCalculatedFeed(StochasticVariable):
     """class for feeding a precalculated stream (usually quadrature points
     for dW)
 
-    points: 3-d array
+    points: 3-d array. dimensions are: time, variable, sample
     """
 
-    __slots__ = ('points', 'col')
+    __slots__ = ('points', 'col', 'sims')
 
     def __init__(self, points):
         self.points = points
+        self.sims = points.shape[2]
         self.col = 0
 
     def run_step(self, t):
