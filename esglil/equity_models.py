@@ -7,7 +7,12 @@ Created on Tue Oct 24 20:28:07 2017
 """
 import numpy as np
 from esglil.common import StochasticVariable
-import numexpr as ne
+try:
+    import numexpr as ne
+except ModuleNotFoundError:
+    pass
+except:
+    raise
 
 class GeometricBrownianMotion(StochasticVariable):
     """class for Geometric Brownian Motion model of equity returns with an

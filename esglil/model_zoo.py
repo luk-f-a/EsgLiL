@@ -247,9 +247,11 @@ def get_hw_gbm_annual(sims, rho, bond_prices,
         
     if out_bonds is not None:
         T = out_bonds
-        P = hw1fexact.BondPrice(alpha=hw_alpha, r=r, sigma_hw=hw_sigma, 
-                                 h=h, T=T)
-        opt_kwargs['P'] = P
+        P = []
+        for t in T:
+            P = hw1fexact.BondPrice(alpha=hw_alpha, r=r, sigma_hw=hw_sigma,
+                                 h=h, T=t)
+            opt_kwargs['P{}'.format(t)] = P
         
     esg =  ESG(dt_sim=1, ind_Z = ind_Z, Z_r_c=Z_r_c, Z_r_e=Z_r_e,
                cash=cash, r=r, S=S, **opt_kwargs)
