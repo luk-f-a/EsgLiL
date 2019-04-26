@@ -163,7 +163,7 @@ def get_gbm_hw_2levels(delta_t_l1, delta_t_l2, sims, rho, bond_prices,
     
     """
     assert type(bond_prices) is dict
-    B_fc, f, p0 = hw1f_B_function(bond_prices=bond_prices, a=hw_a, sigma=hw_sigma,
+    B_fc, f, p0 = hw1feuler.B_function_dict(bond_prices=bond_prices, a=hw_a, sigma=hw_sigma,
                            return_p_and_f=True)
     esg_l1 = get_gbm_hw_nobonds(delta_t_l1, sims, rho, bond_prices, 
                        hw_a, hw_sigma, gbm_sigma=gbm_sigma, 
@@ -247,7 +247,6 @@ def get_hw_gbm_annual(sims, rho, bond_prices,
         
     if out_bonds is not None:
         T = out_bonds
-        P = []
         for t in T:
             P = hw1fexact.BondPrice(alpha=hw_alpha, r=r, sigma_hw=hw_sigma,
                                  h=h, T=t)

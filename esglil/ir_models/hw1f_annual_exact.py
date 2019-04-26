@@ -73,9 +73,10 @@ class ShortRate(StochasticVariable):
     """    
 
     
-    __slots__ = ['sigma_r', 'mu_r', 'alpha', 'Z']
+    __slots__ = ['sigma_r', 'sigma_hw','mu_r', 'alpha', 'Z']
     def __init__(self, g, sigma_hw, alpha_hw, r_zero, Z):
         self.mu_r = lambda t:alpha_hw*g(t)
+        self.sigma_hw = sigma_hw
         self.sigma_r = np.sqrt(sigma_hw**2/2/alpha_hw*(1-np.exp(-2*alpha_hw)))
         self.alpha = alpha_hw
         self.value_t = r_zero
