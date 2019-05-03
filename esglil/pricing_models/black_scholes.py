@@ -41,7 +41,7 @@ class BlackScholeEuropeanPrice(StochasticVariable):
         self.calendar = calendar
 
         #the today date is irrelevant but QuantLib needs to build a calendar
-        today = ql.Date(2, ql.January, 2019)
+        today = ql.Date(30, ql.December, 2018)
         self.ql_date = today
         maturity_date = calendar.advance(today, maturity, ql.Years)
         ql.Settings.instance().evaluationDate = today
@@ -53,7 +53,6 @@ class BlackScholeEuropeanPrice(StochasticVariable):
         rateHandle = ql.QuoteHandle(ir_rate)
         riskFreeRate = ql.FlatForward(today, rateHandle, day_count)
         discount_curve = ql.YieldTermStructureHandle(riskFreeRate)
-        notional = 1e6
 
         # surface
         volatility = ql.BlackConstantVol(0, calendar, flat_vol, day_count)
@@ -85,6 +84,10 @@ class BlackScholeEuropeanPrice(StochasticVariable):
     def run_step(self, t):
         self.ql_date = self.calendar.advance(self.ql_date, int(t - self.t_1),
                                              ql.Years)
+        if t == 1:
+            #to avoid options having 0 value at maturity due to the
+            #esglil maturity falling 1 day after the QL maturity
+            self.ql_date = self.ql_date - ql.Period(2, ql.Days)
         ql.Settings.instance().evaluationDate = self.ql_date
 
         self.value_t = np.zeros(self.mat_bond.value_t.shape[-1])

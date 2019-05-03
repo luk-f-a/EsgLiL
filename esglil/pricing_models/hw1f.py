@@ -37,7 +37,7 @@ class HW1fSwaptionPrice(StochasticVariable):
         self.calendar = calendar
 
         #the today date is irrelevant but QuantLib needs to build a calendar
-        today = ql.Date(2, ql.January, 2019)
+        today = ql.Date(30, ql.December, 2018)
         self.ql_date = today
         effective = calendar.advance(today, maturity, ql.Years)
         maturity_date = calendar.advance(effective, tenor, ql.Years)
@@ -91,6 +91,10 @@ class HW1fSwaptionPrice(StochasticVariable):
 
     def run_step(self, t):
         self.ql_date = self.calendar.advance(self.ql_date, int(t - self.t_1), ql.Years)
+        if t == 1:
+            #to avoid swaptions having 0 value at maturity due to the
+            #esglil maturity falling 1 day after the QL maturity
+            self.ql_date = self.ql_date - ql.Period(2, ql.Days)
         ql.Settings.instance().evaluationDate = self.ql_date
         first_t = list(self.rates.keys())[0]
         self.value_t = np.zeros(self.bonds_dict[first_t].value_t.shape[-1])
