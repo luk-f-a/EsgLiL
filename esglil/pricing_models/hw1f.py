@@ -28,9 +28,10 @@ class HW1fSwaptionPrice(StochasticVariable):
         maturity and tenor + 1, both endpoints included.
     """
 
-    __slots__ = ['bonds_dict', 'rates', 'ql_swaption', 'ql_date', 'calendar' ]
+    __slots__ = ['bonds_dict', 'rates', 'ql_swaption', 'ql_date', 'calendar',
+                 'notional']
 
-    def __init__(self, maturity, tenor, fixed_rate, volatility, swpt_type,
+    def __init__(self, maturity, tenor, fixed_rate, volatility, alpha, swpt_type,
                  bonds_dict):
         assert swpt_type in ('receiver', 'payer')
         calendar = ql.TARGET()
@@ -70,19 +71,18 @@ class HW1fSwaptionPrice(StochasticVariable):
                                      calendar, ql.ModifiedFollowing,
                                      ql.ModifiedFollowing,
                                      ql.DateGeneration.Forward, False)
-        notional = 1e6
+        self.notional = 1e6
         fixed_rate = fixed_rate
         swap_type = {'payer': ql.VanillaSwap.Payer,
                      'receiver': ql.VanillaSwap.Receiver}[swpt_type]
-        swap = ql.VanillaSwap(swap_type, notional, fixed_schedule,
+        swap = ql.VanillaSwap(swap_type, self.notional, fixed_schedule,
                               fixed_rate, day_count, float_schedule, libor_1y,
                               0., day_count)
         # Swaption definition
         self.ql_swaption = ql.Swaption(swap, ql.EuropeanExercise(effective),
                                        ql.Settlement.Cash,
                                        ql.Settlement.CollateralizedCashPrice)
-        vol_quote = ql.SimpleQuote(volatility)
-        model = ql.HullWhite(discount_curve)
+        model = ql.HullWhite(discount_curve, sigma=volatility, a=alpha)
         engine = ql.JamshidianSwaptionEngine(model)
         self.ql_swaption.setPricingEngine(engine)
 
