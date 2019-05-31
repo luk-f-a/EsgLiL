@@ -71,7 +71,7 @@ class HW1fSwaptionPrice(StochasticVariable):
                                      calendar, ql.ModifiedFollowing,
                                      ql.ModifiedFollowing,
                                      ql.DateGeneration.Forward, False)
-        self.notional = 1e6
+        self.notional = 1
         fixed_rate = fixed_rate
         swap_type = {'payer': ql.VanillaSwap.Payer,
                      'receiver': ql.VanillaSwap.Receiver}[swpt_type]
