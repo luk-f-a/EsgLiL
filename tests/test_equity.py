@@ -13,7 +13,9 @@ sys.path.append(os.path.dirname(os.getcwd()))
 from esglil import rng
 from esglil import equity_models
 from esglil.common import TimeDependentParameter
-from esglil.ir_models import HullWhite1fShortRate, HullWhite1fCashAccount, DeterministicBankAccount
+
+from esglil.ir_models.hw1f_euler import ShortRate, CashAccount
+from esglil.ir_models.common import DeterministicBankAccount
 from esglil.esg import ESG
 import numpy as np
 import xarray as xr
@@ -44,7 +46,7 @@ class gbm_basic_test(unittest.TestCase):
 class gbm_leakage_test(unittest.TestCase):
     def setUp(self):
         delta_t = 0.01
-        dW = rng.NormalRng(dims=1, sims=50000, mean=[0], cov=[[delta_t]])
+        dW = rng.NormalRng(dims=1, sims=100000, mean=[0], cov=[[delta_t]])
         self.mu = 0.02
         self.sigma = 0.2
         cash = DeterministicBankAccount(r=self.mu)
@@ -72,8 +74,8 @@ class gbm_statistical_test_stochastic_r(unittest.TestCase):
         a = 0.001
         sigma_r = 0.01
         B = TimeDependentParameter(function=lambda t: 0.01)
-        r = HullWhite1fShortRate(B=B, a=a, sigma=sigma_r, dW=dW[0])
-        C = HullWhite1fCashAccount(r=r)
+        r = ShortRate(B=B, a=a, sigma=sigma_r, dW=dW[0])
+        C = CashAccount(r=r)
         S = equity_models.GeometricBrownianMotion(mu=r, sigma=0.2, dW=dW[1])        
         self.esg = ESG(dt_sim=delta_t, dW=dW, r=r, cash=C, S=S)
         
@@ -97,7 +99,7 @@ class gbm_test_stochastic_int_rate(unittest.TestCase):
         a = 0.001
         sigma_r = 0.01
         B = TimeDependentParameter(function=lambda t: 0.01)
-        r = HullWhite1fShortRate(B=B, a=a, sigma=sigma_r, dW=dW[0])
+        r = ShortRate(B=B, a=a, sigma=sigma_r, dW=dW[0])
         S = equity_models.GeometricBrownianMotion(mu=r, sigma=0.2, dW=dW[1])
         self.esg = ESG(dt_sim=delta_t, dW=dW, r=r, S=S)
 

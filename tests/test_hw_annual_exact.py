@@ -18,7 +18,7 @@ from esglil.ir_models.hw1f_annual_exact import (ShortRate, CashAccount,
 from esglil.ir_models.hw1f_annual_exact import (get_g_function, get_h_function,
                                                 calibrate_b_function, calc_r_zero)
 from esglil.ir_models.hw1f_annual_exact import hw_bond_price
-from esglil.model_zoo import get_hw_gbm_yearly
+from esglil.model_zoo import get_hw_gbm_annual
 import numpy as np
 import pandas as pd
 from scipy.stats import normaltest, kstest
