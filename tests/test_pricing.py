@@ -42,7 +42,8 @@ class hw1f_test_swaption_price(unittest.TestCase):
         #swaption
         strike = 0.01
         volatility = 0.1
-        swaption = HW1fSwaptionPrice(maturity, tenor, strike, volatility,
+        alpha = 0.01
+        swaption = HW1fSwaptionPrice(maturity, tenor, strike, volatility, alpha,
                                      bonds_dict=bonds_dict2, swpt_type='payer')
 
         #put together esg
@@ -95,7 +96,7 @@ class BlackScholesTestOptionPrice(unittest.TestCase):
 
     def test_shape(self):
         results = self.esg.run_multistep_to_dict(dt_out=1, max_t=10)
-        print([results[time]['option'].mean() for time in results])
+        # print([results[time]['option'].mean() for time in results])
         self.assertEqual(type(results), dict,
                          'incorrect type')
         self.assertEqual(len(results), 10)

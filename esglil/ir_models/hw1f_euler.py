@@ -81,7 +81,7 @@ def sigma_calibration(bond_prices, swaption_prices, a):
                                        fixed_leg_daycounter,
                                        floating_leg_daycounter,
                                        term_structure,
-                                       ql.CalibrationHelper.RelativePriceError ,
+                                       ql.SwaptionHelper.RelativePriceError,
                                        strike,
                                        nominal,
                                        vol_type
@@ -157,13 +157,10 @@ def b_calibration_dict(bond_prices, a, sigma):
     b = {}
     #short rate, t is current time, tp1 is "t plus 1", tp2 is t plus 2
     p_t = 1 #bond price at time t
-    t = 0
     maturities = list(bond_prices.keys())
     tp1 = float(min(maturities))
     p_tp1 = bond_prices[tp1]
     r_zero = -(np.ln(p_tp1)-np.ln(p_t))/tp1
-    t = tp1
-    p_t = p_tp1
     #loop on all time steps where second derivatives can be calculated
     times = zip(maturities.values,
                 maturities[1:].values,

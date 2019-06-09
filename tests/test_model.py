@@ -13,9 +13,9 @@ sys.path.append(os.path.dirname(os.getcwd()))
 from esglil import rng
 from esglil.esg import ESG
 from esglil.common import TimeDependentParameter
-from esglil.ir_models import (HullWhite1fShortRate, HullWhite1fBondPrice, 
-                                HullWhite1fCashAccount, hw1f_B_function, 
-                                DeterministicBankAccount)
+from esglil.ir_models.hw1f_euler import (ShortRate, BondPrice,
+                                CashAccount, B_function)
+from esglil.ir_models.common import DeterministicBankAccount
 from esglil.equity_models import GeometricBrownianMotion
 from esglil import ir_models
 import numpy as np
@@ -32,7 +32,7 @@ class test_model_replacement(unittest.TestCase):
         a = 0.001
         sigma = 0.01
         B = TimeDependentParameter(function=lambda t: 0.01)
-        r = HullWhite1fShortRate(B=B, a=a, sigma=sigma, dW=dW)
+        r = ShortRate(B=B, a=a, sigma=sigma, dW=dW)
         self.esg = ESG(dt_sim=self.delta_t, dW=dW, B=B, r=r)
 
     def test_before_replacement(self):
@@ -60,16 +60,16 @@ class test_MCMV_hw(unittest.TestCase):
         # 
         bond_rate = 0.02
         bond_prices = {i:(1+bond_rate)**(-i) for i in range(1,15)}
-        B_fc, f, p = hw1f_B_function(bond_prices, hw_a, hw_sigma, return_p_and_f=True)
+        B_fc, f, p = B_function(bond_prices, hw_a, hw_sigma, return_p_and_f=True)
         B = TimeDependentParameter(B_fc)
-        r = HullWhite1fShortRate(B=B, a=hw_a, sigma=hw_sigma, dW=dW[1])
+        r = ShortRate(B=B, a=hw_a, sigma=hw_sigma, dW=dW[1])
         P_0 = np.array(list(bond_prices.values())).reshape(-1,1)
         T = np.array(list(bond_prices.keys())).reshape(-1,1)
-        P = HullWhite1fBondPrice(a=hw_a, r=r, sigma=hw_sigma, 
+        P = BondPrice(a=hw_a, r=r, sigma=hw_sigma,
                              P_0=p,f=f, T=T)
-        P_y10 = HullWhite1fBondPrice(a=hw_a, r=r, sigma=hw_sigma,  
+        P_y10 = BondPrice(a=hw_a, r=r, sigma=hw_sigma,
                              P_0=p, f=f, T=10)
-        C = HullWhite1fCashAccount(r=r)
+        C = CashAccount(r=r)
         self.esg = ESG(dt_sim=self.delta_t, dW=dW, B=B,r=r, C=C, P=P, P_y10=P_y10)
         
     def test_bonds(self):
@@ -100,8 +100,7 @@ class test_MCMV_hw(unittest.TestCase):
              print("Errors in MCMV bond pricing", 
                   errors.abs().groupby(level='time').max())
         self.assertTrue(test)
-        resource.setrlimit(rsrc, (8*1024**3, -1))        
-        
+
     def test_1_bond(self):
         """
         Tests 1 bond (10 year one): all terminal values should be one and
