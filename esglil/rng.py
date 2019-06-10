@@ -7,7 +7,7 @@ Created on Sun Sep 24 17:27:12 2017
 """
 import numpy as np
 from esglil.common import Variable
-from esglil.common import StochasticVariable
+from esglil.common import FunctionOfVariable
 from esglil.sobol import i4_sobol_std_normal_generator as sobol_normal
 from esglil.multithreaded_rng import (MultithreadedRNG, BackgroundRNGenerator,
                                       BackgroundProcessRNGenerator)
@@ -468,7 +468,7 @@ class DimMixGenerator(Rng):
 
     
     
-class WienerProcess(StochasticVariable):
+class WienerProcess(FunctionOfVariable):
     """class for accumulating Wiener increments into a running sum
 
      Parameters
@@ -489,7 +489,7 @@ class WienerProcess(StochasticVariable):
         self._evaluate_ne('self_1+dW', out_var='value_t')
 
 
-class CorrelatedRV(StochasticVariable):
+class CorrelatedRV(FunctionOfVariable):
     """class for correlating independent variables
 
      Parameters
@@ -531,7 +531,7 @@ class CorrelatedRV(StochasticVariable):
         """
         np.dot(self.m, self.rng(), out=self.value_t)
 
-class PreCalculatedFeed(StochasticVariable):
+class PreCalculatedFeed(FunctionOfVariable):
     """class for feeding a precalculated stream (usually quadrature points
     for dW)
 

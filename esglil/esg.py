@@ -10,7 +10,7 @@ from fractions import Fraction
 import numpy as np
 import pandas as pd
 from itertools import repeat
-from esglil.common import StochasticVariable
+from esglil.common import FunctionOfVariable
 from collections import Iterable
 
 class Model(object):
@@ -75,7 +75,7 @@ class Model(object):
             model = self.eq[m]
             if isinstance(model, Model):
                 model[name] = new_object
-            elif isinstance(model, StochasticVariable):
+            elif isinstance(model, FunctionOfVariable):
                 model._replace_links(name, old_object, new_object)
 
     def __getitem__(self, key):
@@ -106,7 +106,7 @@ class Model(object):
                 model = self.eq[m_name]
                 if isinstance(model, Model):
                     model[key] = item
-                elif isinstance(model, StochasticVariable):
+                elif isinstance(model, FunctionOfVariable):
                     model._replace_links(old_object, item)
 
 

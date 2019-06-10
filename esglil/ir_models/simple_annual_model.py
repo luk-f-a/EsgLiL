@@ -9,9 +9,9 @@ Created on Sun May 13 13:57:42 2018
 @author: luk-f-a
 """
 
-from esglil.common import StochasticVariable
+from esglil.common import FunctionOfVariable
 
-class ShortRate(StochasticVariable):
+class ShortRate(FunctionOfVariable):
     """class for a simple short rate model
     This class only implements the short rate
     SDE: r(t+1)= ar(t)+b(t)+sigma*N(i+1)
@@ -55,7 +55,7 @@ class ShortRate(StochasticVariable):
         self._evaluate_ne('a*self_1+b+sigma*N)',  out_var='value_t')
         self.t_1 = t    
         
-class CashAccount(StochasticVariable):
+class CashAccount(FunctionOfVariable):
     """class for the cash account under the simple annual model
 
    

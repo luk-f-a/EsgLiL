@@ -6,7 +6,7 @@ Created on Tue Oct 24 20:28:07 2017
 @author: luk-f-a
 """
 import numpy as np
-from esglil.common import StochasticVariable
+from esglil.common import FunctionOfVariable
 try:
     import numexpr as ne
 except ModuleNotFoundError:
@@ -14,7 +14,7 @@ except ModuleNotFoundError:
 except:
     raise
 
-class GeometricBrownianMotion(StochasticVariable):
+class GeometricBrownianMotion(FunctionOfVariable):
     """class for Geometric Brownian Motion model of equity returns with an
     Euler scheme
         dS/S = mu*dt + sigma*dW
@@ -52,7 +52,7 @@ class GeometricBrownianMotion(StochasticVariable):
         self.t_1 = t
         
         
-class GBM_exact(StochasticVariable):
+class GBM_exact(FunctionOfVariable):
     """class for Geometric Brownian Motion model of equity returns
         calculated from the solution to the SDE (dS/S = mu*dt + sigma*dW)
         as S = S_0*exp((mu-0.5*sigma**2/2)*t+sigma*W) instead of using
@@ -91,7 +91,7 @@ class GBM_exact(StochasticVariable):
         self._evaluate_ne('s_zero*exp(mu-0.5*sigma**2)*t+W*sigma', 
                           local_vars={'t': t}, out_var='value_t')
 
-class EquityExcessReturns(StochasticVariable):
+class EquityExcessReturns(FunctionOfVariable):
     """class for Geometric Brownian Motion model of equity returns
         calculated from the solution to the SDE (dS/S = mu*dt + sigma*dW)
         as S = S_0*exp((mu-0.5*sigma**2/2)*t+sigma*W) instead of using
@@ -131,7 +131,7 @@ class EquityExcessReturns(StochasticVariable):
     
   
 
-class EquitySimpleAnnualModel(StochasticVariable):
+class EquitySimpleAnnualModel(FunctionOfVariable):
     """class for a simple annual model of equity returns
         
      Parameters
