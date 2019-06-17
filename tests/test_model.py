@@ -73,8 +73,8 @@ class test_MCMV_hw(unittest.TestCase):
         self.esg = ESG(dt_sim=self.delta_t, dW=dW, B=B,r=r, C=C, P=P, P_y10=P_y10)
         
     def test_bonds(self):
-
-        dW_new = rng.MCMVNormalRng(dims=2, sims_outer=5, sims_inner=1000,
+        np.random.seed(0)
+        dW_new = rng.MCMVNormalRng(dims=2, sims_outer=5, sims_inner=2000,
                                      mean=[0,0], 
                                      cov=[[self.delta_t,0],[0,self.delta_t]],
                                      mcmv_time=1)
@@ -97,7 +97,7 @@ class test_MCMV_hw(unittest.TestCase):
         errors = mean_cash.stack()-mean_bond.stack()
         test = np.allclose(errors, 0, atol=0.01)
         if not test:
-             print("Errors in MCMV bond pricing", 
+             print("Errors in MCMV bond pricing (tolerance 1%) \n",
                   errors.abs().groupby(level='time').max())
         self.assertTrue(test)
 

@@ -6,7 +6,7 @@ Created on Sat Dec  9 17:39:15 2017
 @author: luk-f-a
 """
 import numpy as np
-from esglil.common import TimeDependentParameter, StochasticVariable
+from esglil.common import TimeDependentParameter, FunctionOfVariable
 from esglil.ir_models import hw1f_euler as hw1feuler
 from esglil.ir_models import hw1f_annual_exact as hw1fexact
 from esglil.ir_models import simple_annual_model as simple_annual

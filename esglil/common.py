@@ -187,10 +187,11 @@ def _(arg):
     return arg.get_value()
 
 
-class StochasticVariable(Variable):
-    """This class represents a stochastic variable. The randomness can be
-    inherent (ie, it is a random number generator) or inherited
-    (ie, it is a function of a stochastic variable).
+class FunctionOfVariable(Variable):
+    """This class represents a function of another variable. In the model graph
+    they represent nodes except for the roots (usually a Rng instance).
+    If they are functions of a stochastic variable then they will inherit the
+    randomness (ie, it is a function of a stochastic variable).
 
     It provides an abstract method, run_step, that should be used
     to implement the value at time t, given the current value of all input

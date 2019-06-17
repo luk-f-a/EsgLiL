@@ -1,5 +1,5 @@
 import numpy as np
-from esglil.common import StochasticVariable
+from esglil.common import FunctionOfVariable
 
 try:
     import QuantLib as ql
@@ -8,7 +8,8 @@ except ModuleNotFoundError:
 except:
     raise
 
-class HW1fSwaptionPrice(StochasticVariable):
+
+class HW1fSwaptionPrice(FunctionOfVariable):
     """class for pricing European Swaptions (cash settled) using a
     1F HW model with Jamshidian decomposition
 
