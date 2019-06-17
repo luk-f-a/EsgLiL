@@ -23,6 +23,14 @@ After creating an environment with Pyhon 3.6 (look at virtualenv documentation f
 The instructions above will create a full new environment. If you simply want to use EsgLiL in an existing environment,
 please look at install_list.txt which describes the minimal set of packages required to run EsgLiL.
 
+# Roadmap
+The latest version (0.3) needs to be cleaned of many experiments, in particular in the area of basic random number generators.
+Once Numpy incorporates the new randomgen library (probably in Numpy 1.17), we will integrate those generators and remove
+the dependency to randomgen as a separate library. 
+
+We will also remove the support for Numexpr in version 0.4 and consider adding support for Numba. They idea is to not oly accelerate calculations via Numba but also to make EsgLiL a "Numba native" project that 
+can be called from within JIT'ed code.
+
 # Quick tutorial
 
 # Structure [work in progress]
@@ -33,13 +41,6 @@ These layers can be assembled as needed in a model which takes care of the joint
 
 Finally, all calculations can be done in parallel or distributed mode, thanks to its Dask integration.
 
-# Roadmap
-The latest version (0.3) needs to be cleaned of many experiments, in particular in the area of basic random number generators.
-Once Numpy incorporates the new randomgen library (probably in Numpy 1.17), we will integrate those generators and remove
-the dependency to randomgen as a separate library. 
-
-We will also remove the support for Numexpr in version 0.4 and consider adding support for Numba.
- 
 
 # Want to contribute?
 
