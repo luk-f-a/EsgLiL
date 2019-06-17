@@ -621,10 +621,10 @@ class CashAccount(FunctionOfVariable):
         #self._check_valid_params()
 
     def run_step(self, t):
-        #this version '*(1+rdt)' definitely works better than 
-        #exponential capitalization '*exp(rdt)
-        #with larger differences for smaller time deltas (which suggests
-        #that it's the exponential which is wrong)
+        # this version '*(1+rdt)' definitely works better than
+        # exponential capitalization '*exp(rdt)
+        # with larger differences for smaller time deltas (which suggests
+        # that it's the exponential which is wrong)
         self.value_t = self.value_t*(1+self.r*(t-self.t_1))
         self.t_1 = t
 

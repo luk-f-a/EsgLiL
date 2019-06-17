@@ -48,7 +48,7 @@ class hw1f_leakage_tests(unittest.TestCase):
     def setUp(self):
 
         bond_rate = 0.02
-        bond_prices = {i:(1+bond_rate)**(-i) for i in range(1,15)}        
+        bond_prices = {i:(1+bond_rate)**(-i) for i in range(1,51)}
         a = 0.01
         sigma = 0.01
 
@@ -60,7 +60,7 @@ class hw1f_leakage_tests(unittest.TestCase):
         r = ShortRate(B=B, a=a, sigma=sigma, dW=dW)
         #T = np.array(list(bond_prices.keys()))
         P = {'Bond_{}'.format(i):BondPrice(a=a, r=r, sigma=sigma, 
-                                 P_0=p,f=f, T=i) for i in range(1,41)}
+                                 P_0=p, f=f, T=i) for i in range(1,41)}
         C = CashAccount(r=r)
         self.esg = ESG(dt_sim=delta_t, dW=dW, B=B, r=r, cash=C, **P)
             
@@ -85,8 +85,15 @@ class hw1f_leakage_tests(unittest.TestCase):
             self.assertTrue(np.allclose(rates.mean(axis=0), 0.02, atol=0.003))
         with self.subTest():
             self.assertTrue(np.allclose(rates.mean(axis=1), 0.02, atol=0.003))
-        with self.subTest():
-            self.assertTrue(np.allclose(rates, 0.02, atol=0.005))
+
+
+        for i in range(40):
+            # only the prices until maturity are checked
+            with self.subTest(f'Bond_{i} fails rates tests'):
+                if not np.allclose(rates[i, :i], 0.02, atol=0.005):
+                    print('Test Failed - Errors (Tolerance 0.005)')
+                    print(rates[i, :i])
+                self.assertTrue(np.allclose(rates[i, :i], 0.02, atol=0.005))
         
         
 class hw1f_sigma_calibration_tests(unittest.TestCase):    
