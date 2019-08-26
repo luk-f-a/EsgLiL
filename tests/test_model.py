@@ -24,6 +24,47 @@ from scipy.stats import normaltest, kstest
 
 #TODO: test delta_t_in and out different than one and different than each other
 
+
+class test_output_reshape_tools(unittest.TestCase):
+    def setUp(self):
+        self.delta_t = 1
+        self.dims = 3
+        self.sims = 5000
+        dW = rng.NormalRng(dims=self.dims, sims=self.sims, mean=[0]*self.dims,
+                           cov=np.ones((self.dims, self.dims)))
+        self.esg = ESG(dt_sim=self.delta_t, dW=dW)
+
+    def test_output_var_time(self):
+        """
+        test outputs are in right order under var time order
+        does so by checking the correlation matrix
+        :return:
+        """
+        max_t = 5
+        res = self.esg.run_multistep_to_dict(dt_out=1, max_t=max_t)
+        res_arr = self.esg.dict_res_to_array(res, 'dW', order='var-time')
+        self.assertTrue(res_arr.shape==(self.sims, self.dims*max_t))
+        corr = np.corrcoef(res_arr, rowvar=False).round(1)
+        self.assertTrue(np.array_equal(np.diag(corr), np.ones(max_t*self.dims)))
+        self.assertTrue(np.array_equal(np.diag(corr, max_t),
+                                       np.ones(max_t * self.dims - max_t)))
+        self.assertTrue(np.array_equal(np.diag(corr, 2*max_t),
+                                       np.ones(max_t * self.dims - 2*max_t)))
+
+    def test_output_time_var(self):
+        """
+        test outputs are in right order under time var order
+        :return:
+        """
+        max_t = 5
+        res = self.esg.run_multistep_to_dict(dt_out=1, max_t=max_t)
+        res_arr = self.esg.dict_res_to_array(res, 'dW', order='time-var')
+        self.assertTrue(res_arr.shape == (self.sims, self.dims * max_t))
+        corr = np.corrcoef(res_arr, rowvar=False).round(1)
+        for t in range(0, max_t*self.dims, self.dims):
+            self.assertTrue(np.array_equal(corr[t:self.dims+t, t:self.dims+t],
+                                           np.ones((self.dims, self.dims))))
+
         
 class test_model_replacement(unittest.TestCase):
     def setUp(self):
