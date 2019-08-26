@@ -14,8 +14,11 @@ from esglil.multithreaded_rng import (MultithreadedRNG)
 
 class Rng(Variable):
     """Base class for random number generators
+
+    generator holds a referece to an object holding the random state
+    in case an Rng instance needs to be coordinated with others
     """
-    __slots__ = ('shape', 'sims', 'dims')
+    __slots__ = ('shape', 'sims', 'dims', 'generator')
 
     def __init__(self, dims, sims):
         self.sims = sims
@@ -24,6 +27,21 @@ class Rng(Variable):
             self.shape = (sims,)
         else:
             self.shape = (dims, sims)
+        # setting default generator, can be overriden later
+        generator = np.random.Generator(np.random.SFC64())
+
+    def set_generator(self, seed:int, generator=None):
+        """
+
+        :param seed:
+        :param generator: a Numpy generator object
+        :return:
+        """
+        if generator is None:
+            self.generator = np.random.Generator(np.random.SFC64(seed))
+        else:
+            self.generator = generator
+        return self
 
     def run_step(self, t):
         if t == 0:
@@ -90,6 +108,7 @@ class NormalRng(Rng):
 
     def __init__(self, dims, sims, mean, cov):
         Rng.__init__(self, dims, sims)
+        assert dims == cov.shape[0]
         self.mean = mean
         self.cov = cov
 
