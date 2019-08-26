@@ -323,7 +323,44 @@ class Model(object):
         out = {self.clock: dict_out}
         return out
 
-
+    @staticmethod
+    def dict_res_to_array(res_dict: Dict, var_name: str, order='var-time'):
+        """
+        Will convert the dictionary output of `run_multistep_to_dict` into
+        an array. Due to the potential for heterogeneous shapes across variables
+        only one variable can be extracted.
+        :param res_dict:
+        :param order:
+                if  order=='var-time' then all the timesteps of each variable
+                will be next to each other. For example:
+                var1_time1, var1_time2,..., var1_timeT, var2_time1.....
+                if  order=='time-var' then all the variables for each timestep
+                will be next to each other. For example:
+                var1_time1, var2_time1,..., varN_time1, var1_time2.....
+        :param force_vectors:
+                if any of the variables are multidimensional, they will
+                broken into vectors and given
+        :param var_name:
+        :return:
+        """
+        assert order in ('var-time', 'time-var')
+        out = []
+        for t in res_dict:
+            if var_name in res_dict[t]:
+                val = res_dict[t][var_name].T
+                cols = val.shape[1]
+                if len(val.shape) == 1:
+                    val = val.reshape(-1, 1)
+                out.append(val)
+        if order == 'var-time':
+            out = np.stack(out, axis=-1)
+            # this will create an array (sims, sub_var, time)
+            out = out.reshape((out.shape[0], -1), order='C')
+            # this will create an array (sims, varsXtimes)
+        else:
+            out = np.concatenate(out, axis=-1)
+            # this will create an array (sims, timesXvars)
+        return out
 
 def value_to_dictionary(model_name, val):
     value_dict = {}
