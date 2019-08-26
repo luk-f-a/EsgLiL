@@ -78,7 +78,7 @@ class UniformRng(Rng):
     def generate(self):
         """Return the next iteration of the random number generator
         """
-        out = np.random.rand(*self.shape)
+        out = self.generator.random(self.shape)
         return out
 
 
