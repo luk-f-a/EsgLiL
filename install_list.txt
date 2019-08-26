@@ -1,5 +1,10 @@
+NEW ENVIRONMENT
+
+conda create --name esglil_env python=3.6 "numpy>=1.17" scipy
+
+INDIVIDUAL PACKAGE INSTALLATION
 USER:
-conda install numpy
+conda install "numpy>=1.17" scipy
  
 
     OPTIONAL
@@ -8,9 +13,7 @@ conda install numpy
     conda install pandas --no-update-dependencies
 
 DEVELOPER:
-conda install scipy --no-update-dependencies
 conda install matplotlib --no-update-dependencies
-conda install spyder --no-update-dependencies
 
 
     OPTIONAL:
