@@ -14,7 +14,7 @@ conda install "numpy>=1.17" scipy
 
 DEVELOPER:
 conda install matplotlib --no-update-dependencies
-
+conda install pandas --no-update-dependencies
 
     OPTIONAL:
     conda install cython --no-update-dependencies

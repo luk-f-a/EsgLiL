@@ -120,7 +120,7 @@ class NormalRng(Rng):
         """Return the next iteration of the random number generator
         """
         self._check_valid_params()
-        out = np.random.multivariate_normal(self.mean, self.cov,
+        out = self.generator.multivariate_normal(self.mean, self.cov,
                                             size=self.sims,
                                             check_valid='raise').T
         return out

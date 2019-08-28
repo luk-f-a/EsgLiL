@@ -12,6 +12,7 @@ import pandas as pd
 from itertools import repeat
 from esglil.common import FunctionOfVariable
 from collections import Iterable
+from typing import Dict
 
 class Model(object):
     """ Performs time loop on objects associated with it.
