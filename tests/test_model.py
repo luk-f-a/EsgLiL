@@ -14,7 +14,7 @@ from esglil import rng
 from esglil.esg import ESG
 from esglil.common import TimeDependentParameter
 from esglil.ir_models.hw1f_euler import (ShortRate, BondPrice,
-                                CashAccount, B_function)
+                                CashAccount, B_function, B_function_dict)
 from esglil.ir_models.common import DeterministicBankAccount
 from esglil.equity_models import GeometricBrownianMotion
 from esglil import ir_models
@@ -101,7 +101,8 @@ class test_MCMV_hw(unittest.TestCase):
         # 
         bond_rate = 0.02
         bond_prices = {i:(1+bond_rate)**(-i) for i in range(1,15)}
-        B_fc, f, p = B_function(bond_prices, hw_a, hw_sigma, return_p_and_f=True)
+        # B_fc, f, p = B_function(bond_prices, hw_a, hw_sigma, return_p_and_f=True)
+        B_fc, f, p = B_function_dict(bond_prices, hw_a, hw_sigma, return_p_and_f=True)
         B = TimeDependentParameter(B_fc)
         r = ShortRate(B=B, a=hw_a, sigma=hw_sigma, dW=dW[1])
         P_0 = np.array(list(bond_prices.values())).reshape(-1,1)
