@@ -20,7 +20,7 @@ class Rng(Variable):
     """
     __slots__ = ('shape', 'sims', 'dims', 'generator')
 
-    def __init__(self, dims, sims):
+    def __init__(self, dims, sims,*, seed=None):
         self.sims = sims
         self.dims = dims
         if dims == 1:
@@ -28,9 +28,9 @@ class Rng(Variable):
         else:
             self.shape = (dims, sims)
         # setting default generator, can be overriden later
-        self.generator = np.random.Generator(np.random.SFC64())
+        self.generator = np.random.Generator(np.random.SFC64(seed))
 
-    def set_generator(self, seed:int, generator=None):
+    def reset_generator(self, seed:int, generator=None):
         """
 
         :param seed:
@@ -106,8 +106,9 @@ class NormalRng(Rng):
     """
     __slots__ = ('mean', 'cov')
 
-    def __init__(self, dims, sims, mean, cov):
-        Rng.__init__(self, dims, sims)
+    def __init__(self, dims, sims, mean, cov: np.ndarray, seed=None):
+        Rng.__init__(self, dims, sims, seed=seed)
+        cov = np.array(cov)
         assert dims == cov.shape[0]
         self.mean = mean
         self.cov = cov
@@ -131,7 +132,7 @@ class PCAIndWienerIncr(Rng):
                  
     def __init__(self,  dims, sims, mean=0, delta_t=1, years=1, generator='mc-numpy',
                  dask_chunks=1, seed=None, n_threads=1):
-        Rng.__init__(self, dims, sims)
+        Rng.__init__(self, dims, sims, seed=seed)
         self.mean = mean
         self.years = years
         self.delta_t = delta_t    
@@ -154,8 +155,7 @@ class PCAIndWienerIncr(Rng):
         out = self.gen_rn[self.current_year,:,:]
         self.current_year += 1
         return out
-        
-                
+
     
 class IndWienerIncr(Rng):
     """class for independent increments of Wiener process
@@ -186,11 +186,12 @@ class IndWienerIncr(Rng):
 
 
     """
-    __slots__ = ('mean', 'delta_t', 'generator')
+    __slots__ = ('mean', 'delta_t', 'generation_fc')
                  
     def __init__(self,  dims, sims, mean=0, delta_t=1, generator='mc-numpy',
                  dask_chunks=1, seed=None, n_threads=1):
-        Rng.__init__(self, dims, sims)
+        # rng.__init__ will set generator to its default
+        Rng.__init__(self, dims, sims, seed=seed)
 
         assert generator in ('mc-numpy', 'mc-dask', 'sobol-np', 'mc-dask-fast',
                              'mc-multithreaded')
@@ -199,41 +200,47 @@ class IndWienerIncr(Rng):
         
         if generator == 'mc-dask':
             import dask.array as da
-            self.generator = lambda: da.random.normal(mean, np.sqrt(delta_t),
+            self.generator = da.random.RandomState(seed=seed)
+            self.generation_fc = lambda: self.generator.normal(mean, np.sqrt(delta_t),
                              size=(dims, sims), chunks=int(sims/dask_chunks))
         elif generator == 'mc-numpy':
-            self.generator = lambda: np.random.normal(mean, np.sqrt(delta_t),
+            # default generator does not need to be overridden
+            self.generation_fc = lambda: self.generator.normal(mean, np.sqrt(delta_t),
                              size=(dims, sims))
         elif generator == 'sobol-np':
             s_gen = sobol_normal(dims, sims)
-            self.generator = lambda: (mean+np.sqrt(delta_t)*next(s_gen)).T
+            self.generation_fc = lambda: (mean+np.sqrt(delta_t)*next(s_gen)).T
 
         elif generator == 'mc-dask-fast':
-            import sys
-            sys.path.append('/home/lucio/mypyprojects/ng-numpy-randomstate/')
-            from randomstate1.dask.random import normal as xsh128_normal
-            self.generator = lambda :xsh128_normal(mean, np.sqrt(delta_t), 
-                             size=(dims, sims), chunks=int(sims/dask_chunks))            
+            import dask.array as da
+            random_state = lambda seed_param: np.random.Generator(np.random.SFC64(seed_param))
+            self.generator = da.random.RandomState(RandomState=random_state,
+                                                   seed=seed)
+            self.generation_fc = lambda: self.generator.normal(mean, np.sqrt(delta_t),
+                             size=(dims, sims), chunks=int(sims/dask_chunks))
 
         elif generator == 'mc-multithreaded':
             rgen = MultithreadedRNG(dims*sims, seed=seed, threads=n_threads)
             std = np.sqrt(delta_t)
-            self.generator =  lambda sims: (mean+std*rgen.fill().values).reshape((dims, sims))
-            
-      
+            self.generation_fc =  lambda sims: (mean+std*rgen.fill().values).reshape((dims, sims))
+
     def _check_valid_params(self):
         pass
 
+    def reset_generator(self, seed:int, generator=None):
+        # reset should know which option was selected in order to re-create
+        # the right generator, not implemented for now.
+        raise NotImplementedError
 
     def generate(self):
         """Return the next iteration of the random number generator
         """
         self._check_valid_params()
-        out = self.generator()
+        out = self.generation_fc()
         return out
 
 
-class MCMVIndWienerIncr(Rng):
+class MCMVIndWienerIncr_old(Rng):
     """class for class for independent increments of Wiener process with
     special structure for MonteCarlo pricing at t>0
 
@@ -289,7 +296,7 @@ class MCMVIndWienerIncr(Rng):
     def __init__(self,  dims, sims_outer, sims_inner, mean, delta_t,
                  mcmv_time, fixed_inner_arrival=True, generator='mc-numpy',
                  n_threads=1, max_prefetch=1, dask_chunks=1, seed=None):
-        Rng.__init__(self, dims, sims_outer*sims_inner)
+        Rng.__init__(self, dims, sims_outer*sims_inner, seed=seed)
         self.mean = mean
         self.sims_inner = sims_inner
         self.sims_outer = sims_outer
@@ -351,6 +358,132 @@ class MCMVIndWienerIncr(Rng):
         return out
 
 
+class MCMVIndWienerIncr(Rng):
+    """class for class for independent increments of Wiener process with
+    special structure for MonteCarlo pricing at t>0
+
+     Parameters
+    ----------
+    dims: int
+        Amount of dimensions in for the output normal variable
+
+    sims_outer : int
+        Amount of simulations to produce in each timestep for the
+        outer simulation
+
+    sims_inner : int
+        Amount of simulations to produce in each timestep for the
+        inner simulation
+
+    mean : float
+        Mean of the each marginal distribution.
+
+    delta_t : float or fraction
+        Time step of the increment from which the variance is derived
+
+    generator: string {'mc-numpy', ''mc-dask'}
+        Type of generator.
+        mc-numpy: Monte Carlo numpy generator
+        mc-dask: Monte Carlo generator that uses dask for parallel calculations
+
+    n_threads: int
+        Number of threads to use for multithreaded generator
+
+    dask_chunks: int
+        In how many parts should the simulations be split for dask
+        In a Windows machine (even though it had 2 cores), 1 was the best choice
+
+    mcmv_time: scalar
+        Time at which the MC valuation will be performed. At this time
+        there will be sims_inner*sims_outer total simulations but only
+        simg_outer of them will be different values
+
+    fixed_inner_arrival: True or False
+        If true, for each of the sims_outer different values at time t, the
+        arrival path (simulations before t) will be identical.
+        If false, each of the identical sims_inner at time t, will not have
+        identical values at time<t, but randomized to arrive via
+        different paths using a brownian bridge. This is only appropriate
+        for functions which are not path dependent, only dependent on t. This
+        second option is not yet implemented
+    """
+    __slots__ = (
+    'mean', 'delta_t', 'sims_inner', 'sims_outer', 'mcmv_time', 'fixed_arrival',
+    'first_gen_fc', 'chunks', 'second_gen_fc', 'gen_fc')
+
+    def __init__(self, dims, sims_outer, sims_inner, mean, delta_t, mcmv_time, fixed_inner_arrival=True,
+                 generator='mc-numpy', n_threads=1, max_prefetch=1, dask_chunks=1, seed=None):
+        ss = np.random.SeedSequence(seed)
+        child_seeds = ss.spawn(2)
+        Rng.__init__(self, dims, sims_outer * sims_inner,
+                     seed=child_seeds[0].generate_state(10))
+        self.mean = mean
+        self.sims_inner = sims_inner
+        self.sims_outer = sims_outer
+        self.mcmv_time = mcmv_time
+        self.fixed_arrival = fixed_inner_arrival
+
+
+        if generator == 'mc-numpy':
+            ngen = self.generator.normal
+            # first_gen_fc is the function that will be used during the
+            # first time period, the outer simulation phase
+            self.first_gen_fc = lambda sims: ngen(mean, np.sqrt(delta_t),
+                                                  size=(dims, sims))
+            # second_gen_fc is the function that will be used during the
+            # second time period, the inner simulation phase
+            self.second_gen_fc = self.first_gen_fc
+
+        elif generator == 'mc-dask':
+            import dask.array as da
+            np.random.seed(child_seeds[0].generate_state(10))
+            self.first_gen_fc = lambda sims:np.random.normal(mean, np.sqrt(delta_t),
+                                                             size=(dims, sims))
+            chunks = int((sims_outer * sims_inner)/dask_chunks)
+            self.chunks = chunks #chunks
+            np.random.seed(child_seeds[1].generate_state(10))
+            self.second_gen_fc = lambda sims:da.random.normal(mean, np.sqrt(delta_t),
+                                                              size=(dims, sims),
+                                                              chunks=chunks)
+
+        elif generator == 'mc-dask-fast':
+            import dask.array as da
+            ngen = self.generator.normal
+            self.first_gen_fc = lambda sims: ngen(mean, np.sqrt(delta_t),
+                                                  size=(dims, sims))
+            chunks = int((sims_outer * sims_inner) / dask_chunks)
+            self.chunks = chunks  # chunks
+            random_state = lambda seed_param: np.random.Generator(np.random.SFC64(seed_param))
+            sec_gen = da.random.RandomState(RandomState=random_state,
+                                                     seed=child_seeds[1])
+            self.second_gen_fc = lambda sims: sec_gen.normal(mean,
+                                                             np.sqrt(delta_t),
+                                                             size=(dims, sims),
+                                                             chunks=chunks)
+        else:
+            raise ValueError('Unknown generator')
+        self.gen_fc = self.first_gen_fc
+
+    def _check_valid_params(self):
+        pass
+
+    def run_step(self, t):
+        if t == 0:
+            self.initialize()
+        elif t <= self.mcmv_time:
+            rn = self.generate(self.sims_outer)
+            self.value_t = np.tile(rn, [1, self.sims_inner])
+        else:
+            self.gen_fc = self.second_gen_fc
+            self.value_t = self.generate(self.sims_outer * self.sims_inner)
+
+    def generate(self, sims):
+        """Return the next iteration of the random number generator
+        """
+        self._check_valid_params()
+        out = self.gen_fc(sims)
+        #        print(np.cov(out))
+        return out
     
     
 class WienerProcess(FunctionOfVariable):

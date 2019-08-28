@@ -11,6 +11,8 @@ conda install "numpy>=1.17" scipy
     conda install matplotlib --no-update-dependencies
     conda install dask --no-update-dependencies
     conda install pandas --no-update-dependencies
+    conda install sklearn --no-update-dependencies
+    pip install quantlib-python
 
 DEVELOPER:
 conda install matplotlib --no-update-dependencies

@@ -4,6 +4,7 @@ from esglil.common import FunctionOfVariable
 try:
     import QuantLib as ql
 except ModuleNotFoundError:
+    print("Quantlib not installed")
     pass
 except:
     raise
