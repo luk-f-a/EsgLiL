@@ -28,7 +28,7 @@ class Rng(Variable):
         else:
             self.shape = (dims, sims)
         # setting default generator, can be overriden later
-        generator = np.random.Generator(np.random.SFC64())
+        self.generator = np.random.Generator(np.random.SFC64())
 
     def set_generator(self, seed:int, generator=None):
         """
