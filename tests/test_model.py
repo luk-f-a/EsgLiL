@@ -177,16 +177,18 @@ class test_MCMV_hw(unittest.TestCase):
 class test_MCMV_gbm(unittest.TestCase):
     def setUp(self):
         self.delta_t = 1/250
-        dW = rng.NormalRng(dims=2, sims=10, mean=[0], cov=[[self.delta_t]])
+        dW = rng.NormalRng(dims=2, sims=10, mean=[0], cov=[[self.delta_t,0],[0,self.delta_t]])
         S = GeometricBrownianMotion(mu=0.02, sigma=0.2, dW=dW[0])
         C = DeterministicBankAccount(r=0.02)
         self.esg = ESG(dt_sim=self.delta_t, dW=dW, S=S, C=C)
         
     def test_index(self):
-        dW_new = rng.MCMVNormalRng(dims=2, sims_outer=5, sims_inner=50000,
-                                     mean=[0, 0], 
-                                     cov=[[self.delta_t,0],[0,self.delta_t]],
-                                     mcmv_time=1)
+        # dW_new = rng.MCMVNormalRng(dims=2, sims_outer=5, sims_inner=50000,
+        #                              mean=[0, 0],
+        #                              cov=[[self.delta_t,0],[0,self.delta_t]],
+        #                              mcmv_time=1)
+        dW_new = rng.MCMVIndWienerIncr(dims=2, sims_outer=5, sims_inner=50000,
+                                   mean=[0,0], delta_t=self.delta_t, mcmv_time=1)
         self.esg['dW'] = dW_new
         df_full_run = self.esg.run_multistep_to_pandas(dt_out=1, max_t=10, 
                                                        out_vars=['C', 'S'])
