@@ -10,7 +10,9 @@ from esglil.common import Variable
 from esglil.common import FunctionOfVariable
 from esglil.sobol import i4_sobol_std_normal_generator as sobol_normal
 from esglil.multithreaded_rng import (MultithreadedRNG)
+from typing import Union
 
+Number = Union[int, float]
 
 class Rng(Variable):
     """Base class for random number generators
@@ -411,8 +413,10 @@ class MCMVIndWienerIncr(Rng):
     'mean', 'delta_t', 'sims_inner', 'sims_outer', 'mcmv_time', 'fixed_arrival',
     'first_gen_fc', 'chunks', 'second_gen_fc', 'gen_fc')
 
-    def __init__(self, dims, sims_outer, sims_inner, mean, delta_t, mcmv_time, fixed_inner_arrival=True,
+    def __init__(self, dims, sims_outer, sims_inner, mean: float, delta_t: float,
+                 mcmv_time, fixed_inner_arrival=True,
                  generator='mc-numpy', n_threads=1, max_prefetch=1, dask_chunks=1, seed=None):
+
         ss = np.random.SeedSequence(seed)
         child_seeds = ss.spawn(2)
         Rng.__init__(self, dims, sims_outer * sims_inner,
@@ -430,6 +434,8 @@ class MCMVIndWienerIncr(Rng):
             # first time period, the outer simulation phase
             self.first_gen_fc = lambda sims: ngen(mean, np.sqrt(delta_t),
                                                   size=(dims, sims))
+
+
             # second_gen_fc is the function that will be used during the
             # second time period, the inner simulation phase
             self.second_gen_fc = self.first_gen_fc
