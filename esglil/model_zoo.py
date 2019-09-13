@@ -34,7 +34,7 @@ def esg_e_sr_bonds_cash(delta_t, sims, rho, bond_prices, hw_a = 0.001,
     ind_dW = rng.NormalRng(dims=2, sims=sims, mean=[0, 0], cov=indep_cov,
                            seed=seed)
     dW = rng.CorrelatedRV(rng=ind_dW, input_cov=indep_cov , target_cov=dep_cov)
-    B_fc, f, p0 = hw1feuler.B_function(bond_prices=bond_prices, a=hw_a, sigma=hw_sigma,
+    B_fc, f, p0 = hw1feuler.B_function_dict(bond_prices=bond_prices, a=hw_a, sigma=hw_sigma,
                            return_p_and_f=True)
     B = TimeDependentParameter(B_fc)
     r = hw1feuler.ShortRate(B=B, a=hw_a, sigma=hw_sigma, dW=dW[0])
@@ -126,7 +126,7 @@ def get_gbm_hw_nobonds(delta_t, sims,  rho=None, bond_prices=None,
     dep_cov = C@corr@C.T 
     indep_cov = np.diag([delta_t, delta_t])
     dW = rng.CorrelatedRV(rng=ind_dW, input_cov=indep_cov , target_cov=dep_cov)
-    B_fc = hw1feuler.B_function(bond_prices=bond_prices, a=hw_a, sigma=hw_sigma,
+    B_fc = hw1feuler.B_function_dict(bond_prices=bond_prices, a=hw_a, sigma=hw_sigma,
                            return_p_and_f=False)
     B = TimeDependentParameter(B_fc)
     r = hw1feuler.ShortRate(B=B, a=hw_a, sigma=hw_sigma, dW=dW[0])
