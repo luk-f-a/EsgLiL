@@ -160,6 +160,10 @@ class MCMV_IndWienerIncr_Rng_dask_test(unittest.TestCase):
         mean = cf[1.5]['ind_dW'].mean().compute()
         self.assertTrue(np.allclose(mean, 0, atol=0.01))
 
+
+class MultithreadedRNGTest():
+    MultithreadedRNG
+
 if __name__ == '__main__':
     unittest.main()              
             

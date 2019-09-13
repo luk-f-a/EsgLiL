@@ -52,10 +52,10 @@ class hw1f_leakage_tests(unittest.TestCase):
         a = 0.01
         sigma = 0.01
 
-        B,f, p =  ir_models.hw1f_euler.B_function(bond_prices, a, sigma,
+        B,f, p =  ir_models.hw1f_euler.B_function_dict(bond_prices, a, sigma,
                                        return_p_and_f=True)
         delta_t = 1/50
-        dW = rng.NormalRng(dims=1, sims=50000, mean=[0], cov=[[delta_t]])
+        dW = rng.NormalRng(dims=1, sims=50000, mean=[0], cov=np.array([[delta_t]]))
         B = TimeDependentParameter(function=B)
         r = ShortRate(B=B, a=a, sigma=sigma, dW=dW)
         #T = np.array(list(bond_prices.keys()))

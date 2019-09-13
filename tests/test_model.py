@@ -115,14 +115,13 @@ class test_MCMV_hw(unittest.TestCase):
         self.esg = ESG(dt_sim=self.delta_t, dW=dW, B=B,r=r, C=C, P=P, P_y10=P_y10)
         
     def test_bonds(self):
-        np.random.seed(0)
         # dW_new = rng.MCMVNormalRng(dims=2, sims_outer=5, sims_inner=2000,
         #                              mean=[0,0],
         #                              cov=[[self.delta_t,0],[0,self.delta_t]],
         #                              mcmv_time=1)
         dW_new = rng.MCMVIndWienerIncr(dims=2, sims_outer=5, sims_inner=2000,
                                        mean=0, delta_t=self.delta_t,
-                                       mcmv_time=1)
+                                       mcmv_time=1, seed=0)
         self.esg['dW'] = dW_new
         df_full_run = self.esg.run_multistep_to_pandas(dt_out=1, max_t=14,
                                                        out_vars=['C', 'P'])

@@ -16,9 +16,10 @@ from esglil.esg import ESG
 from esglil.equity_models import (GeometricBrownianMotion, GBM_exact,
                                   EquitySimpleAnnualModel, EquityExcessReturns)
 from esglil import rng
+from typing import Dict
 
 def esg_e_sr_bonds_cash(delta_t, sims, rho, bond_prices, hw_a = 0.001, 
-                        hw_sigma = 0.01, gbm_sigma=0.2):
+                        hw_sigma = 0.01, gbm_sigma=0.2, seed=None):
     """Returns and esg model with equity, bonds and cash, driven by a gbm
     and a hw-1f model respectively
     """
@@ -30,7 +31,8 @@ def esg_e_sr_bonds_cash(delta_t, sims, rho, bond_prices, hw_a = 0.001,
     C = np.diag([np.sqrt(delta_t), np.sqrt(delta_t)])
     dep_cov = C@corr@C.T 
     indep_cov = np.diag([delta_t, delta_t])
-    ind_dW = rng.NormalRng(dims=2, sims=sims, mean=[0, 0], cov=indep_cov)
+    ind_dW = rng.NormalRng(dims=2, sims=sims, mean=[0, 0], cov=indep_cov,
+                           seed=seed)
     dW = rng.CorrelatedRV(rng=ind_dW, input_cov=indep_cov , target_cov=dep_cov)
     B_fc, f, p0 = hw1feuler.B_function(bond_prices=bond_prices, a=hw_a, sigma=hw_sigma,
                            return_p_and_f=True)
@@ -50,21 +52,24 @@ def esg_e_sr_bonds_cash(delta_t, sims, rho, bond_prices, hw_a = 0.001,
     
     return esg
 
+
 def esg_e_sr_bonds_cash_2levels(delta_t_l1, delta_t_l2, sims, rho, bond_prices, hw_a = 0.001, hw_sigma = 0.01,
-                           gbm_sigma=0.2, const_tau=None):
+                           gbm_sigma=0.2, const_tau=None, seed=None):
     """
     const_tau: constant time to maturity to track bond prices
     """
     assert type(bond_prices) is dict
 #    assert len(bond_prices.shape)==2
 #    assert bond_prices.shape[1]==1
+
     corr = [[1, rho], [rho, 1]]
     C = np.diag([np.sqrt(delta_t_l1), np.sqrt(delta_t_l1)])
     dep_cov = C@corr@C.T 
     indep_cov = np.diag([delta_t_l1, delta_t_l1])
-    ind_dW = rng.NormalRng(dims=2, sims=sims, mean=[0, 0], cov=indep_cov)
+    ind_dW = rng.NormalRng(dims=2, sims=sims, mean=[0, 0], cov=indep_cov,
+                           seed=seed)
     dW = rng.CorrelatedRV(rng=ind_dW, input_cov=indep_cov , target_cov=dep_cov)
-    B_fc, f, p0 = hw1f_B_function(bond_prices=bond_prices, a=hw_a, sigma=hw_sigma,
+    B_fc, f, p0 = hw1feuler.B_function(bond_prices=bond_prices, a=hw_a, sigma=hw_sigma,
                            return_p_and_f=True)
     B = TimeDependentParameter(B_fc)
     r = hw1feuler.ShortRate(B=B, a=hw_a, sigma=hw_sigma, dW=dW[0])
@@ -82,9 +87,10 @@ def esg_e_sr_bonds_cash_2levels(delta_t_l1, delta_t_l2, sims, rho, bond_prices, 
     
     return esg_l2
 
+
 def get_gbm_hw_nobonds(delta_t, sims,  rho=None, bond_prices=None,
                        hw_a = 0.001, hw_sigma = 0.01, gbm_sigma=0.2, 
-                       custom_ind_dw=None):
+                       custom_ind_dw=None, seed=None):
     """Returns an esg model with short rate, cash and equity  
     using a GBM and HW models.
     
@@ -113,7 +119,7 @@ def get_gbm_hw_nobonds(delta_t, sims,  rho=None, bond_prices=None,
         ind_dW = custom_ind_dw
     else:
         ind_dW = rng.IndWienerIncr(dims=2, sims=sims, mean=0, delta_t=delta_t,
-                                   generator='mc-numpy')
+                                   generator='mc-numpy', seed=seed)
         
     corr = np.array([[1, rho], [rho, 1]])
     C = np.diag([np.sqrt(delta_t), np.sqrt(delta_t)])
@@ -131,11 +137,12 @@ def get_gbm_hw_nobonds(delta_t, sims,  rho=None, bond_prices=None,
     esg = ESG(dt_sim=delta_t, ind_dW=ind_dW, dW=dW, W=W, ind_W=ind_W,
               B=B, r=r, cash=C,  S=S)
     return esg
-    
+
+
 def get_gbm_hw_2levels(delta_t_l1, delta_t_l2, sims, rho, bond_prices, 
                        hw_a = 0.001, hw_sigma = 0.01,
                        gbm_sigma=0.2, const_tau=None, out_bonds=None,
-                       custom_ind_dw=None):
+                       custom_ind_dw=None, seed=None):
     
     """Returns an esg model loop with short_rate cash, equity on a more granular
     simulation level and a second level loop with a different delta_t for
@@ -167,7 +174,7 @@ def get_gbm_hw_2levels(delta_t_l1, delta_t_l2, sims, rho, bond_prices,
                            return_p_and_f=True)
     esg_l1 = get_gbm_hw_nobonds(delta_t_l1, sims, rho, bond_prices, 
                        hw_a, hw_sigma, gbm_sigma=gbm_sigma, 
-                       custom_ind_dw=custom_ind_dw)
+                       custom_ind_dw=custom_ind_dw, seed=seed)
      
     opt_kwargs = {}
     if const_tau is not None:
@@ -185,11 +192,11 @@ def get_gbm_hw_2levels(delta_t_l1, delta_t_l2, sims, rho, bond_prices,
     esg_l2 = ESG(dt_sim=delta_t_l2, esg_l1=esg_l1, **opt_kwargs)
     return esg_l2
 
-def get_hw_gbm_annual(sims, rho, bond_prices, 
+
+def get_hw_gbm_annual(sims, rho, bond_prices: Dict[float, float],
                        hw_alpha=0.5, hw_sigma=0.01,
                        gbm_sigma=0.2, const_tau=None, out_bonds=None,
-                       custom_ind_z=None):
-    
+                       custom_ind_z=None, seed=None):
     """Returns an esg model loop with short_rate cash, equity,
     bonds and/or constant maturity bonds using a GBM and HW models on an
     annual simulation step.
@@ -214,16 +221,19 @@ def get_hw_gbm_annual(sims, rho, bond_prices,
         
     custom_ind_z: Rng object
         Use this Rng instead of the default one
+
+    :return: ESG with following variables:  ind_Z, Z_r_c, Z_r_e,
+               cash, r, S,constP and P
     
     """
     if custom_ind_z:
-        assert custom_ind_z.sims==sims
+        assert custom_ind_z.sims == sims
         ind_Z = custom_ind_z
     else:
         indep_cov = np.diag([1, 1, 1])
-        ind_Z = rng.NormalRng(dims=3, sims=sims, mean=[0, 0, 0], cov=indep_cov)
-    
-    
+        ind_Z = rng.NormalRng(dims=3, sims=sims, mean=[0, 0, 0], cov=indep_cov,
+                              seed=seed)
+
     Z_r_c  = hw1fexact.StochasticDriver(ind_Z[[0,1]], hw_sigma, hw_alpha)
     Z_r_e = rng.CorrelatedRV(ind_Z[[0,2]], input_cov=np.diag([1,1]), 
                             target_cov=np.array([[1,rho], [rho,1]]))
@@ -271,7 +281,7 @@ def esg_equity(delta_t, sims, r=0.03, gbm_sigma=0.2, generator='mc-numpy',
 
 
 
-def esg_equity2(delta_t, sims, r=0.03, gbm_sigma=0.2):
+def esg_equity2(delta_t, sims, r=0.03, gbm_sigma=0.2, seed=None):
     """covar calculations
     target_cov = L.L'  (L is cholesky)
     X: independent dW
@@ -284,9 +294,10 @@ def esg_equity2(delta_t, sims, r=0.03, gbm_sigma=0.2):
     C = np.diag([np.sqrt(delta_t), np.sqrt(delta_t)])
     dep_cov = C@corr@C.T 
     indep_cov = np.diag([delta_t, delta_t])
-    ind_dW = rng.NormalRng(dims=2, sims=sims, mean=[0, 0], cov=indep_cov)
+    ind_dW = rng.NormalRng(dims=2, sims=sims, mean=[0, 0], cov=indep_cov,
+                           seed=seed)
     dW = rng.CorrelatedRV(rng=ind_dW, input_cov=indep_cov , target_cov=dep_cov)
-    dW1d = rng.NormalRng(dims=1, sims=sims, mean=[0], cov=[[float(delta_t)]])
+    dW1d = rng.NormalRng(dims=1, sims=sims, mean=[0], cov=np.array([[float(delta_t)]]))
     W = rng.WienerProcess(dW)
     S = GeometricBrownianMotion(mu=r, sigma=gbm_sigma, dW=dW[1])
     cash = DeterministicBankAccount(r)
@@ -294,9 +305,9 @@ def esg_equity2(delta_t, sims, r=0.03, gbm_sigma=0.2):
     return esg
 
 
-
-def esg_equity_exact(delta_t, sims, r=0.03, gbm_sigma=0.2):
-    dW = rng.NormalRng(dims=1, sims=sims, mean=[0], cov=[[float(delta_t)]])
+def esg_equity_exact(delta_t, sims, r=0.03, gbm_sigma=0.2, seed=None):
+    dW = rng.NormalRng(dims=1, sims=sims, mean=[0], seed=seed,
+                       cov=np.array([[float(delta_t)]]))
     W = rng.WienerProcess(dW)
 #    S = GeometricBrownianMotion(mu=r, sigma=gbm_sigma, dW=dW)
     S = GBM_exact(mu=r, sigma=gbm_sigma, W=W)
@@ -305,14 +316,14 @@ def esg_equity_exact(delta_t, sims, r=0.03, gbm_sigma=0.2):
     return esg
 
 
-def esg_simple_annual_model(sims, generator, custom_z=None):
+def esg_simple_annual_model(sims, generator, custom_z=None, seed=None):
     
     if custom_z:
         assert custom_z.sims==sims
         ind_z = custom_z
     else:
         ind_z = rng.IndWienerIncr(dims=2, sims=sims, mean=0, delta_t=1,
-                                   generator=generator)
+                                   generator=generator, seed=seed)
         
     b=0.1
     a=0.1

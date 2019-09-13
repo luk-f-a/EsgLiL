@@ -18,7 +18,6 @@ from esglil.ir_models.hw1f_euler import ShortRate, CashAccount
 from esglil.ir_models.common import DeterministicBankAccount
 from esglil.esg import ESG
 import numpy as np
-import xarray as xr
 import pandas as pd
 from matplotlib import pyplot as plt
 

@@ -69,7 +69,8 @@ class hw1f_leakage_tests(unittest.TestCase):
         r_zero = calc_r_zero(bond_prices[1])
 
         h = get_h_function(b=b, alpha=alpha)
-        Z = rng.NormalRng(dims=2, sims=50000, mean=[0,0], cov=np.diag([1,1]))
+        Z = rng.NormalRng(dims=2, sims=50000, mean=[0,0], cov=np.diag([1,1]),
+                          seed=1)
         r = ShortRate(g=g, sigma_hw=sigma, alpha_hw=alpha, 
                           r_zero=r_zero, Z=Z[0])
         #T = np.array(list(bond_prices.keys()))

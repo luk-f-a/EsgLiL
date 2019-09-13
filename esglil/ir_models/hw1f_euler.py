@@ -127,7 +127,7 @@ def sigma_calibration(bond_prices, swaption_prices, a):
                                 [True, False])
     
     a_model, sigma = constrained_model.params()
-    assert a_model==a
+    assert a_model == a
     return sigma
 
 
