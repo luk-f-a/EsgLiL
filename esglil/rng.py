@@ -417,8 +417,12 @@ class MCMVIndWienerIncr(Rng):
                  mcmv_time, fixed_inner_arrival=True,
                  generator='mc-numpy', n_threads=1, max_prefetch=1, dask_chunks=1, seed=None):
 
-        ss = np.random.SeedSequence(seed)
-        child_seeds = ss.spawn(2)
+        if isinstance(seed, int):
+            child_seeds = np.random.SeedSequence(seed).spawn(2)
+        elif isinstance(seed, np.random.SeedSequence):
+            child_seeds = seed.spawn(2)
+        else:
+            raise TypeError("See must be int or SeedSequence")
         Rng.__init__(self, dims, sims_outer * sims_inner,
                      seed=child_seeds[0].generate_state(10))
         self.mean = mean
