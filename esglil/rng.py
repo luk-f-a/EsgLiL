@@ -242,124 +242,6 @@ class IndWienerIncr(Rng):
         return out
 
 
-class MCMVIndWienerIncr_old(Rng):
-    """class for class for independent increments of Wiener process with
-    special structure for MonteCarlo pricing at t>0
-
-     Parameters
-    ----------
-    dims: int
-        Amount of dimensions in for the output normal variable
-
-    sims_outer : int
-        Amount of simulations to produce in each timestep for the
-        outer simulation
-
-    sims_inner : int
-        Amount of simulations to produce in each timestep for the
-        inner simulation
-
-    mean : float
-        Mean of the each marginal distribution.
-
-    delta_t : float or fraction
-        Time step of the increment from which the variance is derived
-
-    generator: string {'mc-numpy', ''mc-dask'}
-        Type of generator.
-        mc-numpy: Monte Carlo numpy generator
-        mc-dask: Monte Carlo generator that uses dask for parallel calculations
-
-    n_threads: int
-        Number of threads to use for multithreaded generator
-
-    dask_chunks: int
-        In how many parts should the simulations be split for dask
-        In a Windows machine (even though it had 2 cores), 1 was the best choice
-
-    mcmv_time: scalar
-        Time at which the MC valuation will be performed. At this time
-        there will be sims_inner*sims_outer total simulations but only
-        simg_outer of them will be different values
-
-    fixed_inner_arrival: True or False
-        If true, for each of the sims_outer different values at time t, the
-        arrival path (simulations before t) will be identical.
-        If false, each of the identical sims_inner at time t, will not have
-        identical values at time<t, but randomized to arrive via
-        different paths using a brownian bridge. This is only appropriate
-        for functions which are not path dependent, only dependent on t. This
-        second option is not yet implemented
-    """
-    __slots__ = ('mean', 'delta_t', 'sims_inner', 'sims_outer', 'mcmv_time',
-                 'fixed_arrival', 'generator', 'first_generator', 'chunks',
-                 'second_generator')
-
-    def __init__(self,  dims, sims_outer, sims_inner, mean, delta_t,
-                 mcmv_time, fixed_inner_arrival=True, generator='mc-numpy',
-                 n_threads=1, max_prefetch=1, dask_chunks=1, seed=None):
-        Rng.__init__(self, dims, sims_outer*sims_inner, seed=seed)
-        self.mean = mean
-        self.sims_inner = sims_inner
-        self.sims_outer = sims_outer
-        self.mcmv_time = mcmv_time
-        self.fixed_arrival = fixed_inner_arrival
-        np.random.seed(seed)
-
-        if generator == 'mc-numpy':
-            np.random.seed(seed)
-            self.first_generator = lambda sims: np.random.normal(mean, 
-                                                    np.sqrt(delta_t),
-                                                    size=(dims, sims))
-            self.second_generator = self.first_generator
-
-        elif generator == 'mc-dask':
-            import dask.array as da
-            np.random.seed(seed)
-            self.first_generator = lambda sims:np.random.normal(mean, np.sqrt(delta_t),
-                         size=(dims, sims))
-            chunks = int((sims_outer * sims_inner)/dask_chunks)
-            self.chunks = chunks #chunks
-            self.second_generator = lambda sims:da.random.normal(mean, np.sqrt(delta_t),
-                             size=(dims, sims), chunks=chunks)
-
-        elif generator == 'mc-multithreaded':
-            rgen1 = MultithreadedRNG(dims*sims_outer, seed=seed, threads=n_threads)
-            std = np.sqrt(delta_t)
-            self.first_generator =  lambda sims: (mean+std*rgen1.fill().values).reshape((dims, sims))
-            
-            
-            rgen2 = MultithreadedRNG(dims*sims_outer * sims_inner, 
-                                     state=rgen1.rs.get_state(),
-                                     threads=n_threads)
-            self.second_generator = lambda sims: (mean+std*rgen2.fill().values).reshape((dims, sims))
-
-        else:
-            raise ValueError('Unknown generator')
-        self.generator = self.first_generator
-
-    def _check_valid_params(self):
-        pass
-
-    def run_step(self, t):
-        if t == 0:
-            self.initialize()
-        elif t <= self.mcmv_time:
-            rn = self.generate(self.sims_outer)
-            self.value_t = np.tile(rn, [1,self.sims_inner])
-        else:
-            self.generator = self.second_generator
-            self.value_t = self.generate(self.sims_outer*self.sims_inner)
-
-    def generate(self, sims):
-        """Return the next iteration of the random number generator
-        """
-        self._check_valid_params()
-        out = self.generator(sims)
-#        print(np.cov(out))
-        return out
-
-
 class MCMVIndWienerIncr(Rng):
     """class for class for independent increments of Wiener process with
     special structure for MonteCarlo pricing at t>0
@@ -417,14 +299,14 @@ class MCMVIndWienerIncr(Rng):
                  mcmv_time, fixed_inner_arrival=True,
                  generator='mc-numpy', n_threads=1, max_prefetch=1, dask_chunks=1, seed=None):
 
-        if isinstance(seed, int):
+        if isinstance(seed, int) or seed is None:
             child_seeds = np.random.SeedSequence(seed).spawn(2)
         elif isinstance(seed, np.random.SeedSequence):
             child_seeds = seed.spawn(2)
         else:
-            raise TypeError("See must be int or SeedSequence")
+            raise TypeError("Seed must be int or SeedSequence")
         Rng.__init__(self, dims, sims_outer * sims_inner,
-                     seed=child_seeds[0].generate_state(10))
+                     seed=child_seeds[0])
         self.mean = mean
         self.sims_inner = sims_inner
         self.sims_outer = sims_outer
