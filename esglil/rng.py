@@ -58,11 +58,10 @@ class Rng(Variable):
         raise NotImplementedError
 
     def initialize(self):
-        self.value_t = np.zeros(shape=(self.dims, self.sims))
+        self.value_t = np.zeros(shape=self.shape)
 
     def run_step_ne(self, t):
         self.run_step(t)
-
 
 
 class UniformRng(Rng):
@@ -125,7 +124,10 @@ class NormalRng(Rng):
         self._check_valid_params()
         out = self.generator.multivariate_normal(self.mean, self.cov,
                                             size=self.sims,
-                                            check_valid='raise').T
+                                            check_valid='raise').squeeze().T
+        # squeeze added for the case where dims=1, so it does not create 2d
+        # if creates other problems, it will have to be replaced for a solution
+        # where if dims=2 np.random.normal is used instead of multivariate normal
         return out
 
 class PCAIndWienerIncr(Rng):
@@ -204,11 +206,11 @@ class IndWienerIncr(Rng):
             import dask.array as da
             self.generator = da.random.RandomState(seed=seed)
             self.generation_fc = lambda: self.generator.normal(mean, np.sqrt(delta_t),
-                             size=(dims, sims), chunks=int(sims/dask_chunks))
+                             size=self.shape, chunks=int(sims/dask_chunks))
         elif generator == 'mc-numpy':
             # default generator does not need to be overridden
             self.generation_fc = lambda: self.generator.normal(mean, np.sqrt(delta_t),
-                             size=(dims, sims))
+                             size=self.shape)
         elif generator == 'sobol-np':
             s_gen = sobol_normal(dims, sims)
             self.generation_fc = lambda: (mean+np.sqrt(delta_t)*next(s_gen)).T
@@ -219,7 +221,7 @@ class IndWienerIncr(Rng):
             self.generator = da.random.RandomState(RandomState=random_state,
                                                    seed=seed)
             self.generation_fc = lambda: self.generator.normal(mean, np.sqrt(delta_t),
-                             size=(dims, sims), chunks=int(sims/dask_chunks))
+                             size=self.shape, chunks=int(sims/dask_chunks))
 
         elif generator == 'mc-multithreaded':
             rgen = MultithreadedRNG(dims*sims, seed=seed, threads=n_threads)
