@@ -429,7 +429,7 @@ class CorrelatedRV(FunctionOfVariable):
             import dask.array as da
             self.value_t = da.from_array(self.m, chunks=1000)@self.rng()
         else:
-            self.value_t = self.m@self.rng()
+            self.value_t = self.m@self.rng
 
     def run_step_ne(self, t):
         """

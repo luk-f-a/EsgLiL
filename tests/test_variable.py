@@ -40,7 +40,22 @@ class test_variable_math(unittest.TestCase):
                 self.assertTrue(np.array_equal(op(var2, var1), 
                                             op(var1.value_t, var2.value_t)))
                 self.assertTrue(np.array_equal(op(var2, var1), 
-                                               op(var2.value_t, var1.value_t)))   
+                                               op(var2.value_t, var1.value_t)))
+
+    def test_matmul(self):
+        ## vectors
+        var1 = Variable()
+        var1.value_t = np.arange(1, 11)
+        arr = np.arange(1,11)
+        self.assertEqual(var1 @ arr, arr@arr)
+        self.assertEqual(var1@arr, arr@var1)
+
+        ## arrays
+        var1 = Variable()
+        var1.value_t = np.arange(1, 51).reshape(5, 10)
+        arr = np.arange(1, 51).reshape(5, 10)
+        self.assertTrue(np.array_equal(var1 @ arr.T, arr@arr.T))
+        self.assertTrue(np.array_equal(arr.T @ var1, arr.T @ arr))
 
 class test_variable_view_math(unittest.TestCase):
     def test(self):
@@ -76,6 +91,27 @@ class test_variable_view_math(unittest.TestCase):
                                                op(var2, 10)))
                 self.assertTrue(np.array_equal(op(10, var1[0]), 
                                                op(10, var2)))
-        
+
+    def test_matmul(self):
+        ## vectors
+        var1 = Variable()
+        var1.value_t = np.stack([np.arange(1, 11), np.arange(1, 11)], axis=0)
+        arr = np.arange(1,11)
+        self.assertEqual(var1[0] @ arr, arr.T@arr)
+        self.assertEqual(var1[1] @ arr, arr @ arr)
+        self.assertEqual(var1[0]@arr, arr@var1[0])
+        self.assertEqual(var1[1] @ arr, arr @ var1[1])
+
+        ## arrays
+        var1 = Variable()
+        var1.value_t = np.stack([np.arange(1, 51).reshape(5, 10),
+                                       np.arange(1, 51).reshape(5, 10)],
+                                      axis=0)
+        arr = np.arange(1, 51).reshape(5, 10)
+        self.assertTrue(np.array_equal(var1[0] @ arr.T, arr@arr.T))
+        self.assertTrue(np.array_equal(arr.T @ var1[0], arr.T @ arr))
+        self.assertTrue(np.array_equal(var1[1] @ arr.T, arr@arr.T))
+        self.assertTrue(np.array_equal(arr.T @ var1[1], arr.T @ arr))
+
 if __name__ == '__main__':
     unittest.main()    
