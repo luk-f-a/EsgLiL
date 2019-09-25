@@ -194,9 +194,10 @@ def get_gbm_hw_2levels(delta_t_l1, delta_t_l2, sims, rho, bond_prices,
 
 
 def get_hw_gbm_annual(sims, rho, bond_prices: Dict[float, float],
-                       hw_alpha=0.5, hw_sigma=0.01,
-                       gbm_sigma=0.2, const_tau=None, out_bonds=None,
-                       custom_ind_z=None, seed=None):
+                      hw_alpha=0.5, hw_sigma=0.01, gbm_sigma=0.2,
+                      const_tau=None, out_bonds=None,
+                      real_estate=False, rho_re=None, gbm_re_sigma=0.05,
+                      custom_ind_z=None, seed=None):
     """Returns an esg model loop with short_rate cash, equity,
     bonds and/or constant maturity bonds using a GBM and HW models on an
     annual simulation step.
@@ -208,7 +209,8 @@ def get_hw_gbm_annual(sims, rho, bond_prices: Dict[float, float],
     
     rho: float 
         correlation between HW and GBM Brownian motions.
-    
+
+
     bond_prices: dictionary {maturity: price}
        prices for notional 1 zero-coupon bonds, ie discount factors.
         
@@ -218,27 +220,37 @@ def get_hw_gbm_annual(sims, rho, bond_prices: Dict[float, float],
         
     out_bonds: 1-d array
         maturity of bonds to track at every time step
+
+    rho_re: float
+        correlation between HW and GBM (real estate) Brownian motions.
         
     custom_ind_z: Rng object
         Use this Rng instead of the default one
 
+    :param real_estate:
     :return: ESG with following variables:  ind_Z, Z_r_c, Z_r_e,
                cash, r, S,constP and P
     
     """
+    dims = 4 if real_estate else 3
+    if real_estate:
+        assert rho_re is not None and 0 <= rho_re <= 1
+    assert 0 <= rho <= 1
     if custom_ind_z:
         assert custom_ind_z.sims == sims
         ind_Z = custom_ind_z
     else:
-        indep_cov = np.diag([1, 1, 1])
-        ind_Z = rng.NormalRng(dims=3, sims=sims, mean=[0, 0, 0], cov=indep_cov,
-                              seed=seed)
+        indep_cov = np.diag([1] * dims)
+        mean_vec = [0] * dims
+        cov_mat = indep_cov
+        ind_Z = rng.NormalRng(dims=dims, sims=sims, mean=mean_vec,
+                              cov=cov_mat, seed=seed)
 
     Z_r_c  = hw1fexact.StochasticDriver(ind_Z[[0, 1]], hw_sigma, hw_alpha)
     Z_r_e = rng.CorrelatedRV(ind_Z[[0, 2]], input_cov=np.diag([1, 1]),
                             target_cov=np.array([[1, rho], [rho, 1]]))
     b_vec = hw1fexact.calibrate_b_function(bond_prices, hw_alpha, hw_sigma)
-    b = lambda t:b_vec[int(t)]
+    b = lambda t: b_vec[int(t)]
     g = hw1fexact.get_g_function(b_s=b, alpha=hw_alpha)
     r_zero = hw1fexact.calc_r_zero(bond_prices[1])
     r = hw1fexact.ShortRate(g=g, sigma_hw=hw_sigma, alpha_hw=hw_alpha, 
@@ -248,6 +260,12 @@ def get_hw_gbm_annual(sims, rho, bond_prices: Dict[float, float],
                                r=r, Z=Z_r_c[1])
     S = EquityExcessReturns(cash=cash, sigma=gbm_sigma, Z=Z_r_e[1])
     opt_kwargs = {}
+    if real_estate:
+        Z_r_re = rng.CorrelatedRV(ind_Z[[0, 3]], input_cov=np.diag([1, 1]),
+                                 target_cov=np.array([[1, rho_re], [rho_re, 1]]))
+        RE = EquityExcessReturns(cash=cash, sigma=gbm_re_sigma, Z=Z_r_re[1])
+        opt_kwargs['Z_r_re'] = Z_r_re
+        opt_kwargs['RE'] = RE
     if const_tau is not None:
         hw_const_bond = hw1fexact.ConstantMaturityBondPrice
         constP = hw_const_bond(alpha=hw_alpha, r=r, sigma=hw_sigma,  
