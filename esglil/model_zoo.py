@@ -234,9 +234,9 @@ def get_hw_gbm_annual(sims, rho, bond_prices: Dict[float, float],
         ind_Z = rng.NormalRng(dims=3, sims=sims, mean=[0, 0, 0], cov=indep_cov,
                               seed=seed)
 
-    Z_r_c  = hw1fexact.StochasticDriver(ind_Z[[0,1]], hw_sigma, hw_alpha)
-    Z_r_e = rng.CorrelatedRV(ind_Z[[0,2]], input_cov=np.diag([1,1]), 
-                            target_cov=np.array([[1,rho], [rho,1]]))
+    Z_r_c  = hw1fexact.StochasticDriver(ind_Z[[0, 1]], hw_sigma, hw_alpha)
+    Z_r_e = rng.CorrelatedRV(ind_Z[[0, 2]], input_cov=np.diag([1, 1]),
+                            target_cov=np.array([[1, rho], [rho, 1]]))
     b_vec = hw1fexact.calibrate_b_function(bond_prices, hw_alpha, hw_sigma)
     b = lambda t:b_vec[int(t)]
     g = hw1fexact.get_g_function(b_s=b, alpha=hw_alpha)

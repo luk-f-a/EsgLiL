@@ -130,6 +130,7 @@ class NormalRng(Rng):
         # where if dims=2 np.random.normal is used instead of multivariate normal
         return out
 
+
 class PCAIndWienerIncr(Rng):
     __slots__ = ('mean', 'delta_t', 'generator', 'years', 'current_year',
                  'gen_rn')
