@@ -302,7 +302,7 @@ class MCMVIndWienerIncr(Rng):
                  mcmv_time, fixed_inner_arrival=True,
                  generator='mc-numpy', n_threads=1, max_prefetch=1, dask_chunks=1, seed=None):
 
-        if isinstance(seed, int) or seed is None:
+        if isinstance(seed, (int, np.int64, np.int32)) or seed is None:
             child_seeds = np.random.SeedSequence(seed).spawn(2)
         elif isinstance(seed, np.random.SeedSequence):
             child_seeds = seed.spawn(2)
